@@ -14,9 +14,14 @@ import { DARK, LIGHT } from './src/theme';
 import { DIAS_SEMANA, DIAS_SEMANA_EXT, MESES } from './src/constants';
 import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
 import { normalizarHorario } from './src/utils/horario';
-import { formatarContagem } from './src/utils/formatadores';
 import { formatarData, normalizarData } from './src/utils/datas';
-
+import { EstadoVazio } from './src/components/EstadoVazio';
+import { StatusOcupacao } from './src/components/StatusOcupacao';
+import { AppointmentCard } from './src/components/AppointmentCard';
+import { SectionLabel, StyledInput } from './src/components/FormFields';
+import { ProximoAtendimento } from './src/components/ProximoAtendimento';
+import { LinhaDeTempo } from './src/components/LinhaDeTempo';
+import { CardRelatorio } from './src/components/CardRelatorio';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendário customizado
@@ -223,51 +228,6 @@ function BloqueioLoteModal({ visible, T, onFechar, onConfirmar }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Componentes base (EstadoVazio, StatusOcupacao, BloqueioModal, ConfirmModal,
-// ConcluirModal, EditModal, ProximoAtendimento, LinhaDeTempo, AppointmentCard)
-// ─────────────────────────────────────────────────────────────────────────────
-function EstadoVazio({ T, mensagem = 'Nenhum agendamento nesta data', icone = 'calendar-outline' }) {
-  return (
-    <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>
-      <View style={{ marginBottom: 20, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 80, height: 80, borderRadius: 22, backgroundColor: T.accentGlow, borderWidth: 1.5, borderColor: T.accentDim, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={icone} size={38} color={T.accentDim} />
-        </View>
-        <View style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: 9, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim }} />
-        <View style={{ position: 'absolute', bottom: -4, left: -10, width: 12, height: 12, borderRadius: 6, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim }} />
-      </View>
-      <Text style={{ color: T.text, fontSize: 16, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>Nada por aqui!</Text>
-      <Text style={{ color: T.textSub, fontSize: 13, textAlign: 'center', lineHeight: 19 }}>{mensagem}</Text>
-    </View>
-  );
-}
-
-function StatusOcupacao({ agendamentos, bloqueios, horaInicio, horaFim, T }) {
-  const totalSlots = horaFim - horaInicio;
-  const horasOcupadas = new Set([
-    ...agendamentos.map(a => new Date(a.horario_atendimento).getHours()),
-    ...bloqueios.map(b => new Date(b.horario_atendimento).getHours()),
-  ]).size;
-  const pct = totalSlots > 0 ? Math.round((horasOcupadas / totalSlots) * 100) : 0;
-  const cor = pct >= 80 ? '#C0392B' : pct >= 50 ? '#E67E22' : '#27AE60';
-  if (agendamentos.length === 0 && bloqueios.length === 0) return null;
-  return (
-    <View style={{ backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 14, marginBottom: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ color: T.textSub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' }}>Ocupação do dia</Text>
-        <Text style={{ color: cor, fontWeight: '800', fontSize: 15 }}>{pct}%</Text>
-      </View>
-      <View style={{ height: 8, backgroundColor: T.cardBorder, borderRadius: 4, overflow: 'hidden' }}>
-        <View style={{ height: 8, width: `${pct}%`, backgroundColor: cor, borderRadius: 4 }} />
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-        <Text style={{ color: T.textSub, fontSize: 11 }}>{horasOcupadas} hora{horasOcupadas !== 1 ? 's' : ''} ocupada{horasOcupadas !== 1 ? 's' : ''}</Text>
-        <Text style={{ color: T.textSub, fontSize: 11 }}>{totalSlots - horasOcupadas} livre{totalSlots - horasOcupadas !== 1 ? 's' : ''}</Text>
-      </View>
-    </View>
-  );
-}
 
 function BloqueioModal({ visible, hora, data, T, onConfirm, onCancel }) {
   const [motivo, setMotivo] = useState(''), [focused, setFocused] = useState(false);
@@ -466,178 +426,14 @@ function EditModal({ visible, item, dadosCliente, T, onSalvar, onFechar, dataIni
 }
 
 
-function ProximoAtendimento({ lista, T, formatarData }) {
-  const [agora, setAgora] = useState(Date.now());
-  useEffect(() => { const id = setInterval(() => setAgora(Date.now()), 1000); return () => clearInterval(id); }, []);
-  const proximo = lista.map(i => ({ ...i, ts: new Date(i.horario_atendimento).getTime() })).filter(i => i.ts >= agora - 60000).sort((a, b) => a.ts - b.ts)[0];
-  if (!proximo) return null;
-  const diff = proximo.ts - agora, urgente = diff < 15 * 60 * 1000;
-  return (
-    <View style={{ backgroundColor: T.surface, borderRadius: 16, borderWidth: 1.5, borderColor: urgente ? T.danger : T.accent, marginBottom: 18, overflow: 'hidden' }}>
-      <View style={{ height: 3, backgroundColor: urgente ? T.danger : T.accent }} />
-      <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: urgente ? 'rgba(192,57,43,0.12)' : T.accentGlow, borderWidth: 1, borderColor: urgente ? 'rgba(192,57,43,0.35)' : T.accentDim, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={urgente ? 'alarm-outline' : 'time-outline'} size={22} color={urgente ? T.danger : T.accent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: T.textSub, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Próximo atendimento</Text>
-          <Text style={{ color: T.text, fontSize: 15, fontWeight: '800' }}>{proximo.nome_pessoa}</Text>
-          {proximo.nome_procedimento ? <Text style={{ color: T.textSub, fontSize: 12, marginTop: 1 }}>{proximo.nome_procedimento}</Text> : null}
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: urgente ? T.danger : T.accent, fontSize: diff <= 0 ? 16 : 18, fontWeight: '800', letterSpacing: -0.5 }}>{formatarContagem(diff)}</Text>
-          <Text style={{ color: T.textSub, fontSize: 11, marginTop: 2 }}>{formatarData(proximo.horario_atendimento)}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
 
-function LinhaDeTempo({ agendamentos, bloqueios, T, dark, concluir, cancelar, formatarData, dataSelecionada, horaInicio = 7, horaFim = 22, onBloquear, onDesbloquear }) {
-  const horas = Array.from({ length: horaFim - horaInicio + 1 }, (_, i) => horaInicio + i);
-  const porHora = {};
-  agendamentos.forEach(a => { const h = new Date(a.horario_atendimento).getHours(); if (!porHora[h]) porHora[h] = []; porHora[h].push({ ...a, tipo: 'agendamento' }); });
-  bloqueios.forEach(b => { const h = new Date(b.horario_atendimento).getHours(); if (!porHora[h]) porHora[h] = []; porHora[h].push({ ...b, tipo: 'bloqueio' }); });
-  const agora = new Date(), hojeStr = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-  const ehHoje = dataSelecionada === hojeStr, horaAtual = ehHoje ? agora.getHours() : -1;
-  function calcularIntervaloLivre(hBase) { let livres = 0; for (let h = hBase; h <= horaFim; h++) { if (porHora[h] && porHora[h].length > 0) break; livres++; } return livres; }
-  return (
-    <View style={{ marginTop: 16 }}>
-      {horas.map((h, idx) => {
-        const itens = porHora[h] || [], passado = h < horaAtual, atual = h === horaAtual;
-        const bloqueado = itens.some(i => i.tipo === 'bloqueio'), agendadosHora = itens.filter(i => i.tipo === 'agendamento');
-        const itemBloqueado = itens.find(i => i.tipo === 'bloqueio');
-        const horaAntOcupada = idx > 0 && ((porHora[horas[idx - 1]] || []).length > 0);
-        const intervaloLivre = (!bloqueado && agendadosHora.length === 0 && horaAntOcupada) ? calcularIntervaloLivre(h) : 0;
-        return (
-          <View key={h} style={{ flexDirection: 'row', minHeight: 52 }}>
-            <View style={{ width: 48, alignItems: 'flex-end', paddingRight: 12, paddingTop: 2 }}>
-              <Text style={{ color: atual ? T.accent : T.textSub, fontSize: 12, fontWeight: atual ? '800' : '400' }}>{String(h).padStart(2,'0')}:00</Text>
-            </View>
-            <View style={{ flex: 1, borderLeftWidth: 2, borderLeftColor: atual ? T.accent : bloqueado ? T.danger : passado ? T.cardBorder : T.inputBorder, paddingLeft: 14, paddingBottom: 8 }}>
-              <View style={{ position: 'absolute', left: -6, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: atual ? T.accent : bloqueado ? T.danger : agendadosHora.length > 0 ? T.accent : (passado ? T.cardBorder : T.inputBorder), borderWidth: atual ? 2 : 0, borderColor: T.bg }} />
-              {bloqueado ? (
-                <View style={{ backgroundColor: dark ? 'rgba(192,57,43,0.18)' : 'rgba(192,57,43,0.08)', borderRadius: 12, borderWidth: 1.5, borderColor: T.danger, borderStyle: 'dashed', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(192,57,43,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="lock-closed" size={16} color={T.danger} />
-                    </View>
-                    <View>
-                      <Text style={{ color: T.danger, fontWeight: '800', fontSize: 13, letterSpacing: 0.3 }}>Indisponível</Text>
-                      <Text style={{ color: T.danger, fontSize: 11, marginTop: 1, opacity: 0.75 }}>{itemBloqueado?.nome_procedimento || 'Horário bloqueado'}</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity onPress={() => onDesbloquear(itemBloqueado)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: T.danger, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-                    <Ionicons name="lock-open-outline" size={14} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>Desbloquear</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : agendadosHora.length === 0 ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-                  <View>
-                    {intervaloLivre >= 2 && !passado ? (
-                      <View style={{ backgroundColor: 'rgba(39,174,96,0.12)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(39,174,96,0.3)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Ionicons name="time-outline" size={12} color={T.success} />
-                        <Text style={{ color: T.success, fontSize: 11, fontWeight: '600' }}>{intervaloLivre}h livres</Text>
-                      </View>
-                    ) : atual ? (
-                      <View style={{ backgroundColor: T.accentGlow, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                        <Text style={{ color: T.accent, fontSize: 11, fontWeight: '600' }}>Horário atual</Text>
-                      </View>
-                    ) : passado ? (
-                      <Text style={{ color: T.placeholder, fontSize: 12, fontStyle: 'italic' }}>—</Text>
-                    ) : (
-                      <Text style={{ color: T.placeholder, fontSize: 12 }}>Disponível</Text>
-                    )}
-                  </View>
-                  {!passado && !atual && (
-                    <TouchableOpacity onPress={() => onBloquear(h)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: T.cardBorder }}>
-                      <Ionicons name="lock-closed-outline" size={12} color={T.textSub} />
-                      <Text style={{ color: T.textSub, fontSize: 11 }}>Bloquear</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : null}
-              {agendadosHora.map(item => (
-                <View key={item.id} style={{ backgroundColor: T.card, borderRadius: 12, borderWidth: 1, borderColor: T.accent, marginTop: 2, marginBottom: 6, overflow: 'hidden' }}>
-                  <View style={{ height: 2, backgroundColor: T.accent }} />
-                  <View style={{ padding: 10 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: T.text, fontWeight: '700', fontSize: 14 }}>{item.nome_pessoa}</Text>
-                      <Text style={{ color: T.accent, fontWeight: '700', fontSize: 12 }}>R$ {item.valor || '0'}</Text>
-                    </View>
-                    {item.nome_procedimento ? <Text style={{ color: T.textSub, fontSize: 12, marginTop: 2 }}>{item.nome_procedimento}</Text> : null}
-                    <Text style={{ color: T.textSub, fontSize: 11, marginTop: 3 }}>{formatarData(item.horario_atendimento)}</Text>
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                      <TouchableOpacity onPress={() => concluir(item)} style={{ flex: 1, backgroundColor: T.success, borderRadius: 8, paddingVertical: 7, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
-                        <Ionicons name="checkmark-circle-outline" size={13} color="#fff" />
-                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>Concluir</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => cancelar(item)} style={{ flex: 1, borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: T.danger, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
-                        <Ionicons name="close-circle-outline" size={13} color={T.danger} />
-                        <Text style={{ color: T.danger, fontWeight: '700', fontSize: 11 }}>Cancelar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
 
-function AppointmentCard({ item, T, dark, concluir, cancelar, formatarData }) {
-  return (
-    <View style={{ backgroundColor: T.card, borderWidth: 1, borderColor: T.cardBorder, borderRadius: 16, marginTop: 14, overflow: 'hidden' }}>
-      <View style={{ height: 3, backgroundColor: T.accent }} />
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="person" size={18} color={T.accent} />
-            </View>
-            <Text style={{ color: T.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 }}>{item.nome_pessoa}</Text>
-          </View>
-          <View style={{ backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: T.accent, fontSize: 12, fontWeight: '700' }}>R$ {item.valor || '0'}</Text>
-          </View>
-        </View>
-        <View style={{ backgroundColor: dark ? '#111111' : '#F8F5F0', borderRadius: 10, padding: 12, gap: 6, marginBottom: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="time-outline" size={14} color={T.textSub} />
-            <Text style={{ color: T.textSub, fontSize: 13 }}>{formatarData(item.horario_atendimento)}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="cut-outline" size={14} color={T.textSub} />
-            <Text style={{ color: T.textSub, fontSize: 13 }}>{item.nome_procedimento || 'Procedimento não informado'}</Text>
-          </View>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => concluir(item)} style={{ flex: 1, backgroundColor: T.success, paddingVertical: 11, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
-            <Ionicons name="checkmark-circle-outline" size={15} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Concluir</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => cancelar(item)} style={{ flex: 1, backgroundColor: 'transparent', paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: T.danger, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
-            <Ionicons name="close-circle-outline" size={15} color={T.danger} />
-            <Text style={{ color: T.danger, fontWeight: '700', fontSize: 12 }}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-}
 
-function SectionLabel({ children, T }) {
-  return <Text style={{ color: T.accent, fontSize: 10, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginTop: 20, marginBottom: 6, marginLeft: 2 }}>{children}</Text>;
-}
-function StyledInput({ placeholder, value, onChangeText, id, T, focused, setFocused, ...rest }) {
-  return (
-    <TextInput placeholder={placeholder} placeholderTextColor={T.placeholder} value={value} onChangeText={onChangeText} onFocus={() => setFocused(id)} onBlur={() => setFocused('')} style={{ flex: rest.flex || undefined, backgroundColor: T.input, color: T.text, borderWidth: 1, borderColor: focused === id ? T.accent : T.inputBorder, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginTop: 8 }} {...rest} />
-  );
-}
+
+
+
+
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP
@@ -904,19 +700,7 @@ export default function App() {
   const clientesFiltrados = buscaCliente.trim() ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase().trim())) : clientes;
 
   // ── Card de relatório reutilizável ─────────────────────────────────────────
-  function CardRelatorio({ r }) {
-    return (
-      <View style={{ backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginTop: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View>
-          <Text style={{ color: T.text, fontSize: 15, fontWeight: '700', textTransform: 'capitalize' }}>{r.mes}</Text>
-          <Text style={{ color: T.textSub, fontSize: 11, marginTop: 3 }}>{r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : ''}</Text>
-        </View>
-        <View style={{ backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <Text style={{ color: T.accent, fontWeight: '800', fontSize: 15 }}>R$ {Number(r.total).toFixed(2)}</Text>
-        </View>
-      </View>
-    );
-  }
+  
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -1187,11 +971,11 @@ export default function App() {
           {abaRelatorio === 'mensal' ? (
             relatorios.length === 0
               ? <EstadoVazio T={T} mensagem="Nenhum relatório mensal ainda. Aguarde o próximo ciclo automático." icone="bar-chart-outline" />
-              : relatorios.map(r => <CardRelatorio key={r.id} r={r} />)
+              : relatorios.map(r => <CardRelatorio key={r.id} r={r} T={T} />)
           ) : (
             relatoriosTri.length === 0
               ? <EstadoVazio T={T} mensagem="Nenhum relatório trimestral ainda. Aguarde o próximo ciclo automático." icone="layers-outline" />
-              : relatoriosTri.map(r => <CardRelatorio key={r.id} r={r} />)
+              : relatoriosTri.map(r => <CardRelatorio key={r.id} r={r} T={T} />)
           )}
         </ScrollView>
       )}
