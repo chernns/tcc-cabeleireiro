@@ -27,6 +27,8 @@ import { BloqueioLoteModal } from './src/components/BloqueioLoteModal';
 import { EditModal } from './src/components/EditModal';
 import { ConfigScreen } from './src/screens/ConfigScreen';
 import { RelatorioScreen } from './src/screens/RelatorioScreen';
+import { ClientesScreen } from './src/screens/ClientesScreen';
+import { AgendaScreen } from './src/screens/AgendaScreen';
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -376,113 +378,20 @@ export default function App() {
         )} />
       )}
 
-      {/* AGENDA */}
       {tela === 'agenda' && (
-        <ScrollView contentContainerStyle={{ padding: 18 }} showsVerticalScrollIndicator indicatorStyle={dark ? 'white' : 'black'}>
-          <View style={{ marginBottom: 14 }}>
-            <Text style={{ color: T.textSub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>Calendário</Text>
-            <Text style={{ color: T.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>Agenda</Text>
-          </View>
-          <TouchableOpacity onPress={() => setBloqueioLoteModal(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(192,57,43,0.10)', borderWidth: 1.5, borderColor: T.danger, borderRadius: 14, paddingVertical: 12, marginBottom: 14 }}>
-            <Ionicons name="lock-closed-outline" size={18} color={T.danger} />
-            <Text style={{ color: T.danger, fontWeight: '800', fontSize: 14 }}>Bloquear horário em vários dias</Text>
-          </TouchableOpacity>
-          <View style={{ borderRadius: 20, overflow: 'hidden' }}>
-            <CalendarioCustom markedDates={agendaAgenda} onDayPress={d => setDataAgenda(d.dateString)} selectedDate={dataAgenda} dark={dark} />
-          </View>
-          {dataAgenda ? (
-            <View style={{ marginTop: 16 }}>
-              <StatusOcupacao agendamentos={lista.filter(i => normalizarData(i.horario_atendimento) === dataAgenda)} bloqueios={bloqueiosDoDia} horaInicio={horaInicio} horaFim={horaFim} T={T} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ color: T.textSub, fontSize: 13 }}>Agendamentos em <Text style={{ color: T.accent, fontWeight: '700' }}>{dataAgenda}</Text></Text>
-                <View style={{ flexDirection: 'row', backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.cardBorder, overflow: 'hidden' }}>
-                  <TouchableOpacity onPress={() => setModoAgenda('timeline')} style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: modoAgenda === 'timeline' ? T.accentGlow : 'transparent', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <Ionicons name="git-branch-outline" size={14} color={modoAgenda === 'timeline' ? T.accent : T.textSub} />
-                    <Text style={{ fontSize: 12, color: modoAgenda === 'timeline' ? T.accent : T.textSub, fontWeight: modoAgenda === 'timeline' ? '700' : '400' }}>Linha</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setModoAgenda('lista')} style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: modoAgenda === 'lista' ? T.accentGlow : 'transparent', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <Ionicons name="list-outline" size={14} color={modoAgenda === 'lista' ? T.accent : T.textSub} />
-                    <Text style={{ fontSize: 12, color: modoAgenda === 'lista' ? T.accent : T.textSub, fontWeight: modoAgenda === 'lista' ? '700' : '400' }}>Lista</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              {(() => {
-                const doDia = lista.filter(i => normalizarData(i.horario_atendimento) === dataAgenda);
-                if (modoAgenda === 'timeline') {
-                  return <LinhaDeTempo agendamentos={doDia} bloqueios={bloqueiosDoDia} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} dataSelecionada={dataAgenda} horaInicio={horaInicio} horaFim={horaFim} onBloquear={h => setBloqueioModal({ hora: h })} onDesbloquear={desbloquear} />;
-                }
-                return doDia.length === 0 ? <EstadoVazio T={T} mensagem={`Nenhum agendamento para ${dataAgenda}`} /> : doDia.map(item => <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} />);
-              })()}
-            </View>
-          ) : <EstadoVazio T={T} mensagem="Selecione uma data no calendário para ver os agendamentos." />}
-        </ScrollView>
+        <AgendaScreen T={T} dark={dark} lista={lista} agendaAgenda={agendaAgenda}
+          dataAgenda={dataAgenda} setDataAgenda={setDataAgenda}
+          bloqueiosDoDia={bloqueiosDoDia} horaInicio={horaInicio} horaFim={horaFim}
+          modoAgenda={modoAgenda} setModoAgenda={setModoAgenda}
+          setBloqueioLoteModal={setBloqueioLoteModal} setBloqueioModal={setBloqueioModal}
+          desbloquear={desbloquear}
+          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar} />
       )}
 
-      {/* CLIENTES */}
       {tela === 'clientes' && (
-        <ScrollView contentContainerStyle={{ padding: 18 }} showsVerticalScrollIndicator indicatorStyle={dark ? 'white' : 'black'}>
-          <View style={{ marginBottom: 14 }}>
-            <Text style={{ color: T.textSub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>Base de dados</Text>
-            <Text style={{ color: T.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>Clientes</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: T.input, borderRadius: 14, borderWidth: 1, borderColor: focusBusca ? T.accent : T.inputBorder, paddingHorizontal: 14, marginBottom: 16, gap: 10 }}>
-            <Ionicons name="search-outline" size={18} color={buscaCliente ? T.accent : T.placeholder} />
-            <TextInput value={buscaCliente} onChangeText={setBuscaCliente} placeholder="Buscar cliente pelo nome..." placeholderTextColor={T.placeholder} onFocus={() => setFocusBusca(true)} onBlur={() => setFocusBusca(false)} style={{ flex: 1, color: T.text, fontSize: 15, paddingVertical: 13 }} />
-            {buscaCliente.length > 0 && <TouchableOpacity onPress={() => setBuscaCliente('')}><Ionicons name="close-circle" size={18} color={T.placeholder} /></TouchableOpacity>}
-          </View>
-          {!buscaCliente && (
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-              <View style={{ flex: 1, backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 14 }}>
-                <Text style={{ color: T.textSub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Clientes</Text>
-                <Text style={{ color: T.accent, fontSize: 28, fontWeight: '800' }}>{clientes.length}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 14 }}>
-                <Text style={{ color: T.textSub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Atendimentos</Text>
-                <Text style={{ color: T.accent, fontSize: 28, fontWeight: '800' }}>{clientes.reduce((a, c) => a + c.atendimentos, 0)}</Text>
-              </View>
-            </View>
-          )}
-          {buscaCliente.trim().length > 0 && <Text style={{ color: T.textSub, fontSize: 13, marginBottom: 12 }}>{clientesFiltrados.length} resultado{clientesFiltrados.length !== 1 ? 's' : ''} para <Text style={{ color: T.accent, fontWeight: '700' }}>"{buscaCliente}"</Text></Text>}
-          {clientesFiltrados.length === 0 ? <EstadoVazio T={T} mensagem={buscaCliente ? `Nenhum cliente encontrado para "${buscaCliente}"` : 'Nenhum cliente encontrado ainda.'} icone="people-outline" /> : clientesFiltrados.map((cliente, idx) => (
-            <View key={idx} style={{ backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, marginBottom: 12, overflow: 'hidden' }}>
-              <View style={{ height: 3, backgroundColor: T.accent }} />
-              <View style={{ padding: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: T.accent, fontSize: 18, fontWeight: '800' }}>{(cliente.nome || '?')[0].toUpperCase()}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: T.text, fontSize: 16, fontWeight: '700' }}>{cliente.nome}</Text>
-                      {cliente.telefone ? <Text style={{ color: T.textSub, fontSize: 12, marginTop: 2 }}>{cliente.telefone}</Text> : <Text style={{ color: T.placeholder, fontSize: 12, marginTop: 2, fontStyle: 'italic' }}>Sem telefone</Text>}
-                    </View>
-                  </View>
-                  <View style={{ backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, marginLeft: 8 }}>
-                    <Text style={{ color: T.accent, fontWeight: '800', fontSize: 13 }}>R$ {cliente.total.toFixed(0)}</Text>
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  <View style={{ flex: 1, backgroundColor: dark ? '#111' : '#F8F5F0', borderRadius: 10, padding: 10, alignItems: 'center' }}>
-                    <Text style={{ color: T.accent, fontSize: 20, fontWeight: '800' }}>{cliente.atendimentos}</Text>
-                    <Text style={{ color: T.textSub, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Visitas</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: dark ? '#111' : '#F8F5F0', borderRadius: 10, padding: 10, alignItems: 'center' }}>
-                    <Text style={{ color: cliente.pendentes > 0 ? T.success : T.textSub, fontSize: 20, fontWeight: '800' }}>{cliente.pendentes}</Text>
-                    <Text style={{ color: T.textSub, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Pendentes</Text>
-                  </View>
-                  <View style={{ flex: 2, backgroundColor: dark ? '#111' : '#F8F5F0', borderRadius: 10, padding: 10 }}>
-                    <Text style={{ color: T.textSub, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Último serviço</Text>
-                    <Text style={{ color: T.text, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{cliente.ultimoServico || '—'}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => abrirWhatsApp(cliente)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#25D366', borderRadius: 12, paddingVertical: 11 }}>
-                  <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Enviar Lembrete por WhatsApp</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+        <ClientesScreen T={T} dark={dark} clientes={clientes} clientesFiltrados={clientesFiltrados}
+          buscaCliente={buscaCliente} setBuscaCliente={setBuscaCliente}
+          focusBusca={focusBusca} setFocusBusca={setFocusBusca} abrirWhatsApp={abrirWhatsApp} />
       )}
 
       {/* ── RELATÓRIO ── */}
