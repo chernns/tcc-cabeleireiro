@@ -5,76 +5,18 @@ import {
   StatusBar as RNStatusBar, ScrollView, Modal, Linking, ActivityIndicator
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { createClient } from '@supabase/supabase-js';
 import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './src/services/supabase';
+import { buscarConflito } from './src/services/agenda';
+import { DARK, LIGHT } from './src/theme';
+import { DIAS_SEMANA, DIAS_SEMANA_EXT, MESES } from './src/constants';
+import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
+import { normalizarHorario } from './src/utils/horario';
+import { formatarContagem } from './src/utils/formatadores';
+import { formatarData, normalizarData } from './src/utils/datas';
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL,
-  process.env.EXPO_PUBLIC_SUPABASE_KEY
-);
-
-const DARK = {
-  bg: '#0A0A0A', surface: '#141414', card: '#1A1A1A', cardBorder: '#2A2A2A',
-  input: '#1E1E1E', inputBorder: '#303030', text: '#F0EDE8', textSub: '#7A7570',
-  placeholder: '#4A4642', accent: '#C9A84C', accentDim: '#8A6E2E',
-  accentGlow: 'rgba(201,168,76,0.15)', danger: '#C0392B', success: '#27AE60',
-  navBorder: '#1F1F1F', overlay: 'rgba(0,0,0,0.75)', modalBg: '#1A1A1A',
-  modalBorder: '#2A2A2A', emptyBg: '#141414', timelineBg: '#111111',
-};
-const LIGHT = {
-  bg: '#F4F1EC', surface: '#FFFFFF', card: '#FFFFFF', cardBorder: '#E8E3DA',
-  input: '#FFFFFF', inputBorder: '#D8D2C8', text: '#1A1714', textSub: '#8A8278',
-  placeholder: '#B8B2A8', accent: '#9A6E1A', accentDim: '#C49A3C',
-  accentGlow: 'rgba(154,110,26,0.10)', danger: '#C0392B', success: '#27AE60',
-  navBorder: '#E8E3DA', overlay: 'rgba(0,0,0,0.50)', modalBg: '#FFFFFF',
-  modalBorder: '#E8E3DA', emptyBg: '#F4F1EC', timelineBg: '#F0EDE8',
-};
-
-const DIAS_SEMANA     = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-const DIAS_SEMANA_EXT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-// ── Helpers de trimestre ──────────────────────────────────────────────────────
-function trimestreAtual() {
-  const agora = new Date();
-  const tri   = Math.floor(agora.getMonth() / 3) + 1; // 1..4
-  const ano   = agora.getFullYear();
-  return { tri, ano };
-}
-function labelTrimestre(tri, ano) {
-  const nomes = { 1: '1º Trimestre', 2: '2º Trimestre', 3: '3º Trimestre', 4: '4º Trimestre' };
-  return `${nomes[tri]} ${ano}`;
-}
-function rangeTrimestrre(tri, ano) {
-  const mesInicio = (tri - 1) * 3;          // 0, 3, 6, 9
-  const mesFim    = mesInicio + 2;           // 2, 5, 8, 11
-  const inicio    = new Date(ano, mesInicio, 1).toISOString();
-  const fim       = new Date(ano, mesFim + 1, 0, 23, 59, 59).toISOString();
-  return { inicio, fim };
-}
-// Aceita "14:30", "9:05", "9:5"... e devolve "HH:MM". Retorna null se inválido.
-function normalizarHorario(texto) {
-  const m = String(texto || '').trim().match(/^([01]?\d|2[0-3]):([0-5]?\d)$/);
-  if (!m) return null;
-  return `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}`;
-}
-// Retorna o registro que conflita com o horário, ou null se estiver livre.
-async function buscarConflito(dataHora) {
-  const [data, hora] = dataHora.split(' ');
-  const horaCheia = hora.split(':')[0];
-  const { data: registros, error } = await supabase
-    .from('Procedimentos')
-    .select('id, nome_pessoa, status, horario_atendimento')
-    .in('status', ['pendente', 'bloqueado'])
-    .like('horario_atendimento', `${data}%`);
-  if (error) return { erro: true };
-  return (registros || []).find(r => {
-    const h = r.horario_atendimento.replace('T', ' ').split(' ')[1] || '';
-    return h.split(':')[0] === horaCheia;
-  }) || null;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendário customizado
@@ -523,12 +465,6 @@ function EditModal({ visible, item, dadosCliente, T, onSalvar, onFechar, dataIni
   );
 }
 
-function formatarContagem(ms) {
-  if (ms <= 0) return 'Agora!';
-  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`;
-  return `${String(m).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`;
-}
 
 function ProximoAtendimento({ lista, T, formatarData }) {
   const [agora, setAgora] = useState(Date.now());
@@ -576,7 +512,7 @@ function LinhaDeTempo({ agendamentos, bloqueios, T, dark, concluir, cancelar, fo
         return (
           <View key={h} style={{ flexDirection: 'row', minHeight: 52 }}>
             <View style={{ width: 48, alignItems: 'flex-end', paddingRight: 12, paddingTop: 2 }}>
-              <Text style={{ color: atual ? T.accent : T.textSub, fontSize: 12, fontWeight: atual ? '800' : '400' }}>{String(h).padStart(2,'00')}:00</Text>
+              <Text style={{ color: atual ? T.accent : T.textSub, fontSize: 12, fontWeight: atual ? '800' : '400' }}>{String(h).padStart(2,'0')}:00</Text>
             </View>
             <View style={{ flex: 1, borderLeftWidth: 2, borderLeftColor: atual ? T.accent : bloqueado ? T.danger : passado ? T.cardBorder : T.inputBorder, paddingLeft: 14, paddingBottom: 8 }}>
               <View style={{ position: 'absolute', left: -6, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: atual ? T.accent : bloqueado ? T.danger : agendadosHora.length > 0 ? T.accent : (passado ? T.cardBorder : T.inputBorder), borderWidth: atual ? 2 : 0, borderColor: T.bg }} />
@@ -962,11 +898,7 @@ export default function App() {
     const msg = encodeURIComponent(msgLembrete.replace(/\{nome\}/g, cliente.nome));
     Linking.openURL(`https://wa.me/${numero}?text=${msg}`).catch(() => alert('Não foi possível abrir o WhatsApp.'));
   }
-  function formatarData(d) {
-    const dt = new Date(d);
-    return `${dt.getDate()}/${dt.getMonth()+1}  ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'00')}`;
-  }
-  function normalizarData(str) { return str ? str.replace('T', ' ').substring(0, 10) : ''; }
+
 
   const bloqueiosDoDia    = bloqueios.filter(b => normalizarData(b.horario_atendimento) === dataAgenda);
   const clientesFiltrados = buscaCliente.trim() ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase().trim())) : clientes;
@@ -1303,7 +1235,7 @@ export default function App() {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: T.accentGlow, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: T.accentDim }}>
               <Ionicons name="time-outline" size={16} color={T.accent} />
-              <Text style={{ color: T.accent, fontSize: 13, fontWeight: '600' }}>Funcionamento: {String(horaInicio).padStart(2,'0')}:00 até {String(horaFim).padStart(2,'00')}:00 — {horaFim - horaInicio}h de trabalho</Text>
+              <Text style={{ color: T.accent, fontSize: 13, fontWeight: '600' }}>Funcionamento: {String(horaInicio).padStart(2,'0')}:00 até {String(horaFim).padStart(2,'0')}:00 — {horaFim - horaInicio}h de trabalho</Text>
             </View>
           </View>
           <Text style={{ color: T.accent, fontSize: 10, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>Intervalo entre Atendimentos</Text>
