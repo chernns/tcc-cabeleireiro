@@ -3,20 +3,34 @@ import { View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar, Linki
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+//services//
+
 import { supabase } from './src/services/supabase';
 import { buscarConflito } from './src/services/agenda';
 import { DARK, LIGHT } from './src/theme';
+
+//utils//
+
 import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
 import { normalizarHorario } from './src/utils/horario';
 import { normalizarData } from './src/utils/datas';
+import { agruparServicos } from './src/utils/servicos';
+
+//components//
+
 import { BloqueioModal, ConfirmModal, ConcluirModal } from './src/components/Modais';
 import { BloqueioLoteModal } from './src/components/BloqueioLoteModal';
 import { EditModal } from './src/components/EditModal';
+
+//screens//
+
 import { ConfigScreen } from './src/screens/ConfigScreen';
 import { RelatorioScreen } from './src/screens/RelatorioScreen';
 import { ClientesScreen } from './src/screens/ClientesScreen';
 import { AgendaScreen } from './src/screens/AgendaScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -138,18 +152,7 @@ export default function App() {
     const pendentesOrdenados   = (futuros || []).sort((a, b) => new Date(a.horario_atendimento) - new Date(b.horario_atendimento));
     setLista(pendentesOrdenados);
     setBloqueios(bloqueados || []);
-    const mapaServicos = {};
-[...(futuros||[]), ...(concluidos||[])].forEach(i => {
-  const s = (i.nome_procedimento || '').trim(); if (!s) return;
-  const chave = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-  if (!mapaServicos[chave]) {
-    const nomeBonito = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-    mapaServicos[chave] = { nome: nomeBonito, count: 0, receita: 0 };
-  }
-  mapaServicos[chave].count++;
-  if (i.status === 'concluido') mapaServicos[chave].receita += Number(i.valor || 0);
-});
-    setServicos(Object.values(mapaServicos).sort((a, b) => b.count - a.count).slice(0, 5));
+    setServicos(agruparServicos([...(futuros||[]), ...(concluidos||[])]));
     let mapa = {};
     (concluidos || []).forEach(i => {
       const d = new Date(i.horario_atendimento);
