@@ -1,11 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import {
-  View, Text, TextInput, FlatList, Switch,
-  Dimensions, TouchableOpacity, Platform,
-  StatusBar as RNStatusBar, ScrollView, Linking,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
@@ -13,15 +8,7 @@ import { buscarConflito } from './src/services/agenda';
 import { DARK, LIGHT } from './src/theme';
 import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
 import { normalizarHorario } from './src/utils/horario';
-import { formatarData, normalizarData } from './src/utils/datas';
-import { EstadoVazio } from './src/components/EstadoVazio';
-import { StatusOcupacao } from './src/components/StatusOcupacao';
-import { AppointmentCard } from './src/components/AppointmentCard';
-import { SectionLabel, StyledInput } from './src/components/FormFields';
-import { ProximoAtendimento } from './src/components/ProximoAtendimento';
-import { LinhaDeTempo } from './src/components/LinhaDeTempo';
-import { CardRelatorio } from './src/components/CardRelatorio';
-import { CalendarioCustom } from './src/components/CalendarioCustom';
+import { normalizarData } from './src/utils/datas';
 import { BloqueioModal, ConfirmModal, ConcluirModal } from './src/components/Modais';
 import { BloqueioLoteModal } from './src/components/BloqueioLoteModal';
 import { EditModal } from './src/components/EditModal';
@@ -29,6 +16,7 @@ import { ConfigScreen } from './src/screens/ConfigScreen';
 import { RelatorioScreen } from './src/screens/RelatorioScreen';
 import { ClientesScreen } from './src/screens/ClientesScreen';
 import { AgendaScreen } from './src/screens/AgendaScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -294,6 +282,11 @@ export default function App() {
 
   const bloqueiosDoDia    = bloqueios.filter(b => normalizarData(b.horario_atendimento) === dataAgenda);
   const clientesFiltrados = buscaCliente.trim() ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase().trim())) : clientes;
+  const form = {
+    nome, setNome, corte, setCorte, procedimento, setProcedimento,
+    duracao, setDuracao, horario, setHorario, telefone, setTelefone,
+    valor, setValor, focused, setFocused,
+  };
 
   // ── Card de relatório reutilizável ─────────────────────────────────────────
   
@@ -331,51 +324,10 @@ export default function App() {
 
       {/* HOME */}
       {tela === 'home' && (
-        <FlatList data={[{ key: 'home' }]} keyExtractor={i => i.key} contentContainerStyle={{ padding: 18 }} showsVerticalScrollIndicator indicatorStyle={dark ? 'white' : 'black'} renderItem={() => (
-          <View>
-            <View style={{ marginBottom: 18 }}>
-              <Text style={{ color: T.textSub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>Agendamentos</Text>
-              <Text style={{ color: T.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>Novo Horário</Text>
-            </View>
-            <ProximoAtendimento lista={lista} T={T} formatarData={formatarData} />
-            <View style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 4 }}>
-              <CalendarioCustom markedDates={agendaHome} onDayPress={d => setDataHome(d.dateString)} selectedDate={dataHome} dark={dark} />
-            </View>
-            {dataHome ? <Text style={{ color: T.accent, fontSize: 12, textAlign: 'center', marginBottom: 6, letterSpacing: 1 }}>📅 {dataHome}</Text> : <Text style={{ color: T.placeholder, fontSize: 12, textAlign: 'center', marginBottom: 6 }}>Selecione uma data acima</Text>}
-            <View style={{ backgroundColor: T.surface, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginTop: 10 }}>
-              <SectionLabel T={T}>Cliente</SectionLabel>
-              <StyledInput id="nome" placeholder="Nome completo" value={nome} onChangeText={setNome} T={T} focused={focused} setFocused={setFocused} />
-              <SectionLabel T={T}>Serviço</SectionLabel>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <StyledInput id="corte" placeholder="Tipo de corte" value={corte} onChangeText={setCorte} flex={1} T={T} focused={focused} setFocused={setFocused} />
-                <StyledInput id="proc" placeholder="Procedimento" value={procedimento} onChangeText={setProcedimento} flex={1} T={T} focused={focused} setFocused={setFocused} />
-              </View>
-              <SectionLabel T={T}>Horário</SectionLabel>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <StyledInput id="dur" placeholder={`Duração (padrão: ${intervalo}min)`} value={duracao} onChangeText={setDuracao} flex={1} T={T} focused={focused} setFocused={setFocused} />
-                <StyledInput id="hora" placeholder="14:00" value={horario} onChangeText={setHorario} flex={1} T={T} focused={focused} setFocused={setFocused} />
-              </View>
-              <SectionLabel T={T}>Contato & Valor</SectionLabel>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <StyledInput id="tel" placeholder="Telefone" value={telefone} onChangeText={setTelefone} flex={1} keyboardType="phone-pad" T={T} focused={focused} setFocused={setFocused} />
-                <StyledInput id="val" placeholder="R$ 0,00" value={valor} onChangeText={setValor} flex={1} keyboardType="numeric" T={T} focused={focused} setFocused={setFocused} />
-              </View>
-              <TouchableOpacity onPress={() => salvar()} style={{ backgroundColor: T.accent, paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 20, flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
-                <Ionicons name="add-circle-outline" size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>Confirmar Agendamento</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ marginTop: 24 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ color: T.text, fontSize: 17, fontWeight: '800' }}>Pendentes</Text>
-                <View style={{ backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
-                  <Text style={{ color: T.accent, fontSize: 12, fontWeight: '700' }}>{lista.length}</Text>
-                </View>
-              </View>
-              {lista.length === 0 ? <EstadoVazio T={T} mensagem="Nenhum agendamento pendente ainda." /> : lista.map(item => <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} />)}
-            </View>
-          </View>
-        )} />
+        <HomeScreen T={T} dark={dark} lista={lista} agendaHome={agendaHome}
+          dataHome={dataHome} setDataHome={setDataHome}
+          form={form} intervalo={intervalo} salvar={salvar}
+          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar} />
       )}
 
       {tela === 'agenda' && (
