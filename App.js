@@ -74,8 +74,6 @@ export default function App() {
 
   // ── Controle de geração automática ─────────────────────────────────────────
   // Guardamos "mes-ano" e "tri-ano" do último relatório gerado para não repetir
-  const ultimoMesGerado = useRef('');
-  const ultimoTriGerado = useRef('');
 
   useEffect(() => {
     AsyncStorage.getItem('tema').then(v => { if (v !== null) setDark(JSON.parse(v)); });
@@ -84,8 +82,7 @@ export default function App() {
     AsyncStorage.getItem('horaFim').then(v => { if (v !== null) setHoraFim(Number(v)); });
     AsyncStorage.getItem('intervalo').then(v => { if (v !== null) setIntervalo(Number(v)); });
     // Restaura última geração para não repetir após reiniciar o app
-    AsyncStorage.getItem('ultimoMesGerado').then(v => { if (v) ultimoMesGerado.current = v; });
-    AsyncStorage.getItem('ultimoTriGerado').then(v => { if (v) ultimoTriGerado.current = v; });
+
   }, []);
   useEffect(() => { AsyncStorage.setItem('tema', JSON.stringify(dark)); }, [dark]);
   useEffect(() => { AsyncStorage.setItem('msgLembrete', msgLembrete); }, [msgLembrete]);
@@ -97,45 +94,49 @@ export default function App() {
 
   // Gera / atualiza relatório mensal silenciosamente
   async function gerarRelatorioMensalAuto() {
-    const agora    = new Date();
-    const chave    = `${agora.getFullYear()}-${agora.getMonth()}`; // identificador único do mês
-    if (ultimoMesGerado.current === chave) return; // já gerou neste mês nesta sessão
-
+    const agora     = new Date();
     const mesLabel  = agora.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
     const fimMes    = new Date(agora.getFullYear(), agora.getMonth()+1, 0, 23, 59, 59).toISOString();
-    const { data: concluidos } = await supabase.from('Procedimentos').select('valor').eq('status','concluido').gte('horario_atendimento',inicioMes).lte('horario_atendimento',fimMes);
+
+    const { data: concluidos, error: e1 } = await supabase.from('Procedimentos').select('valor')
+      .eq('status','concluido').gte('horario_atendimento',inicioMes).lte('horario_atendimento',fimMes);
+    if (e1) { console.log('Relatório mensal (busca):', e1.message); return; }
+
     const total = (concluidos||[]).reduce((acc,i) => acc+Number(i.valor||0), 0);
-    const { data: existentes } = await supabase.from('Relatorios').select('id').eq('mes', mesLabel);
-    const existente = existentes && existentes.length > 0 ? existentes[0] : null;
-    if (existente) {
-      await supabase.from('Relatorios').update({ total, criado_em: new Date().toISOString() }).eq('id', existente.id);
-    } else {
-      await supabase.from('Relatorios').insert([{ mes: mesLabel, total, criado_em: new Date().toISOString() }]);
-    }
-    ultimoMesGerado.current = chave;
-    AsyncStorage.setItem('ultimoMesGerado', chave);
+    const { data: existentes, error: e2 } = await supabase.from('Relatorios').select('id,total').eq('mes', mesLabel);
+    if (e2) { console.log('Relatório mensal (consulta):', e2.message); return; }
+
+    const existente = existentes && existentes[0];
+    if (existente && Number(existente.total) === total) return;
+
+    const { error: e3 } = existente
+      ? await supabase.from('Relatorios').update({ total, criado_em: new Date().toISOString() }).eq('id', existente.id)
+      : await supabase.from('Relatorios').insert([{ mes: mesLabel, total, criado_em: new Date().toISOString() }]);
+    if (e3) console.log('Relatório mensal (gravação):', e3.message);
   }
 
   // Gera / atualiza relatório trimestral silenciosamente
   async function gerarRelatorioTrimestralAuto() {
     const { tri, ano } = trimestreAtual();
-    const chave        = `${ano}-T${tri}`;
-    if (ultimoTriGerado.current === chave) return;
-
-    const label        = labelTrimestre(tri, ano);
+    const label = labelTrimestre(tri, ano);
     const { inicio, fim } = rangeTrimestrre(tri, ano);
-    const { data: concluidos } = await supabase.from('Procedimentos').select('valor').eq('status','concluido').gte('horario_atendimento',inicio).lte('horario_atendimento',fim);
+
+    const { data: concluidos, error: e1 } = await supabase.from('Procedimentos').select('valor')
+      .eq('status','concluido').gte('horario_atendimento',inicio).lte('horario_atendimento',fim);
+    if (e1) { console.log('Relatório trimestral (busca):', e1.message); return; }
+
     const total = (concluidos||[]).reduce((acc,i) => acc+Number(i.valor||0), 0);
-    const { data: existentes } = await supabase.from('Relatorio_Tri').select('id').eq('mes', label);
-    const existente = existentes && existentes.length > 0 ? existentes[0] : null;
-    if (existente) {
-      await supabase.from('Relatorio_Tri').update({ total, criado_em: new Date().toISOString() }).eq('id', existente.id);
-    } else {
-      await supabase.from('Relatorio_Tri').insert([{ mes: label, total, criado_em: new Date().toISOString() }]);
-    }
-    ultimoTriGerado.current = chave;
-    AsyncStorage.setItem('ultimoTriGerado', chave);
+    const { data: existentes, error: e2 } = await supabase.from('Relatorio_Tri').select('id,total').eq('mes', label);
+    if (e2) { console.log('Relatório trimestral (consulta):', e2.message); return; }
+
+    const existente = existentes && existentes[0];
+    if (existente && Number(existente.total) === total) return;
+
+    const { error: e3 } = existente
+      ? await supabase.from('Relatorio_Tri').update({ total, criado_em: new Date().toISOString() }).eq('id', existente.id)
+      : await supabase.from('Relatorio_Tri').insert([{ mes: label, total, criado_em: new Date().toISOString() }]);
+    if (e3) console.log('Relatório trimestral (gravação):', e3.message);
   }
 
   async function buscarRelatorios() {
