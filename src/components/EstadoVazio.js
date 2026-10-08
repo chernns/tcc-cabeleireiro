@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+
 export function EstadoVazio({ T, mensagem = 'Nenhum agendamento nesta data', icone = 'calendar-outline' }) {
     return (
         <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>

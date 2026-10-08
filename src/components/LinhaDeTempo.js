@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+
 export function LinhaDeTempo({ agendamentos, bloqueios, T, dark, concluir, cancelar, formatarData, dataSelecionada, horaInicio = 7, horaFim = 22, onBloquear, onDesbloquear }) {
     const horas = Array.from({ length: horaFim - horaInicio + 1 }, (_, i) => horaInicio + i);
     const porHora = {};

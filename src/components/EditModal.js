@@ -13,6 +13,7 @@ import { SeletorHorario } from './SeletorHorario';
 import { normalizarHorario } from '../utils/horario';
 import { gerarSlots, calcularDesabilitados } from '../utils/slots';
 
+
 export function EditModal({
   visible, item, dadosCliente, T, onSalvar, onFechar, dataInicial = '',
   lista = [], bloqueios = [], horaInicio = 7, horaFim = 22, intervalo = 30,

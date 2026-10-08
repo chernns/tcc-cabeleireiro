@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+
 export function AppointmentCard({ item, T, dark, concluir, cancelar, formatarData }) {
     return (
         <View style={{ backgroundColor: T.card, borderWidth: 1, borderColor: T.cardBorder, borderRadius: 16, marginTop: 14, overflow: 'hidden' }}>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextInput } from 'react-native';
 
+
 export function SectionLabel({ children, T }) {
     return <Text style={{ color: T.accent, fontSize: 10, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginTop: 20, marginBottom: 6, marginLeft: 2 }}>{children}</Text>;
 }

@@ -4,27 +4,30 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-//services//
+//-------------------RAIZ-------------------//
+
+import { DARK, LIGHT } from './src/theme';
+
+//-----------------SERVICES-------------------//
 
 import { supabase } from './src/services/supabase';
 import { buscarConflito } from './src/services/agenda';
-import { DARK, LIGHT } from './src/theme';
 import { gravarAgendamento } from './src/services/agendamentos';
 
-//utils//
+//------------------UTILS-------------------//
 
 import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
 import { normalizarHorario } from './src/utils/horario';
 import { normalizarData } from './src/utils/datas';
 import { agruparServicos } from './src/utils/servicos';
 
-//components//
+//-----------------COMPONENTS--------------------//
 
 import { BloqueioModal, ConfirmModal, ConcluirModal } from './src/components/Modais';
 import { BloqueioLoteModal } from './src/components/BloqueioLoteModal';
 import { EditModal } from './src/components/EditModal';
 
-//screens//
+//-------------------screens---------------------//
 
 import { ConfigScreen } from './src/screens/ConfigScreen';
 import { RelatorioScreen } from './src/screens/RelatorioScreen';

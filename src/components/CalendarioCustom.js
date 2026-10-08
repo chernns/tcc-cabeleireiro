@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//-------------------RAIZ-------------------//
+
 import { DIAS_SEMANA, MESES } from '../constants';
+
 
 export function CalendarioCustom({ markedDates = {}, onDayPress, selectedDate, selectedDates, multiSelect = false, dark }) {
     const hoje = new Date();

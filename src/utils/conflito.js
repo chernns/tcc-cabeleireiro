@@ -1,3 +1,5 @@
+//-----------------COMPONENTS--------------------//
+
 import { horaDeRegistro } from './slots';
 
 // Agendamento: conflita só no mesmo horário exato. Bloqueio: vale para a hora inteira.

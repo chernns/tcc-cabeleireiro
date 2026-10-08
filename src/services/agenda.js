@@ -1,4 +1,9 @@
+//-------------------RAIZ-------------------//
+
 import { supabase } from './supabase';
+
+//------------------UTILS-------------------//
+
 import { encontrarConflito } from '../utils/conflito';
 
 // Retorna o registro que conflita com o horário, ou null se estiver livre.

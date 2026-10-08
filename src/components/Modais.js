@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Modal, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+
 export function BloqueioModal({ visible, hora, data, T, onConfirm, onCancel }) {
     const [motivo, setMotivo] = useState(''), [focused, setFocused] = useState(false);
     useEffect(() => { if (!visible) setMotivo(''); }, [visible]);

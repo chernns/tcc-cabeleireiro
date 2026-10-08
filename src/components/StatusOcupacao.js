@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
+
 export function StatusOcupacao({ agendamentos, bloqueios, horaInicio, horaFim, T }) {
     const totalSlots = horaFim - horaInicio;
     const horasOcupadas = new Set([

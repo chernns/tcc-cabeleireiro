@@ -14,6 +14,7 @@ import { AppointmentCard } from '../components/AppointmentCard';
 
 import { formatarData, normalizarData } from '../utils/datas';
 
+
 export function AgendaScreen({
     T, dark, lista, agendaAgenda, dataAgenda, setDataAgenda,
     bloqueiosDoDia, horaInicio, horaFim, modoAgenda, setModoAgenda,

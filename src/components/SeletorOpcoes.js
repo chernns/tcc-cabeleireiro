@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 
+
 export const OPCOES_CORTE = ['Masculino', 'Feminino'];
 
 // Botões de seleção única. Tocar na opção já escolhida desmarca (campo opcional).

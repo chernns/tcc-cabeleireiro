@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//-------------------RAIZ-------------------//
+
 import { DIAS_SEMANA_EXT } from '../constants';
+
 
 export function BloqueioLoteModal({ visible, T, onFechar, onConfirmar }) {
     const [hora, setHora]           = useState('12');

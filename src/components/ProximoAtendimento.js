@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { formatarContagem } from '../utils/formatadores';
 
+
 export function ProximoAtendimento({ lista, T, formatarData }) {
     const [agora, setAgora] = useState(Date.now());
     useEffect(() => { const id = setInterval(() => setAgora(Date.now()), 1000); return () => clearInterval(id); }, []);
