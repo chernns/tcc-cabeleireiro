@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//-----------------utils-----------------//
+
 import { formatarContagem } from '../utils/formatadores';
 
 export function ProximoAtendimento({ lista, T, formatarData }) {

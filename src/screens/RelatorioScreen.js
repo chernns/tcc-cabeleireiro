@@ -2,6 +2,9 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
+
+//---------------components------------------//
+
 import { EstadoVazio } from '../components/EstadoVazio';
 import { CardRelatorio } from '../components/CardRelatorio';
 

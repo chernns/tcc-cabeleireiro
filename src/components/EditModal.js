@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//---------------components------------------//
+
 import { CalendarioCustom } from './CalendarioCustom';
+import { SeletorOpcoes, OPCOES_CORTE } from './SeletorOpcoes';
+
+//-----------------utils-----------------//
+
 import { normalizarHorario } from '../utils/horario';
 
 export function EditModal({ visible, item, dadosCliente, T, onSalvar, onFechar, dataInicial = '' }) {
@@ -75,11 +82,10 @@ export function EditModal({ visible, item, dadosCliente, T, onSalvar, onFechar, 
                 </View>
             )}
             {lbl('Cliente')}{inp('nome', 'Nome completo', nome, setNome)}
-            {lbl('Serviço')}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-                {inp('corte', 'Tipo de corte', corte, setCorte, { flex: 1 })}
-                {inp('proc', 'Procedimento', procedimento, setProcedimento, { flex: 1 })}
-            </View>
+            {lbl('Tipo de corte')}
+            <SeletorOpcoes T={T} opcoes={OPCOES_CORTE} valor={corte} onChange={setCorte} />
+            {lbl('Procedimento')}
+            {inp('proc', 'Procedimento', procedimento, setProcedimento)}
             {lbl('Horário')}
             <View style={{ flexDirection: 'row', gap: 10 }}>
                 {inp('dur', 'Duração', duracao, setDuracao, { flex: 1 })}

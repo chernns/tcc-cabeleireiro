@@ -1,11 +1,17 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//---------------components------------------//
+
 import { CalendarioCustom } from '../components/CalendarioCustom';
 import { StatusOcupacao } from '../components/StatusOcupacao';
 import { LinhaDeTempo } from '../components/LinhaDeTempo';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { AppointmentCard } from '../components/AppointmentCard';
+
+//-----------------utils-----------------//
+
 import { formatarData, normalizarData } from '../utils/datas';
 
 export function AgendaScreen({

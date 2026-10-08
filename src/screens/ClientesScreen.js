@@ -1,6 +1,9 @@
 import React from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//---------------components------------------//
+
 import { EstadoVazio } from '../components/EstadoVazio';
 
 export function ClientesScreen({

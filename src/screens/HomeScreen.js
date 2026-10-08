@@ -1,11 +1,18 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+//---------------components------------------//
+
 import { CalendarioCustom } from '../components/CalendarioCustom';
 import { ProximoAtendimento } from '../components/ProximoAtendimento';
 import { SectionLabel, StyledInput } from '../components/FormFields';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { AppointmentCard } from '../components/AppointmentCard';
+import { SeletorOpcoes, OPCOES_CORTE } from '../components/SeletorOpcoes';
+
+//-----------------utils-----------------//
+
 import { formatarData } from '../utils/datas';
 
 export function HomeScreen({
@@ -44,11 +51,11 @@ export function HomeScreen({
         <SectionLabel T={T}>Cliente</SectionLabel>
         <StyledInput id="nome" placeholder="Nome completo" value={nome} onChangeText={setNome} T={T} focused={focused} setFocused={setFocused} />
 
-        <SectionLabel T={T}>Serviço</SectionLabel>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <StyledInput id="corte" placeholder="Tipo de corte" value={corte} onChangeText={setCorte} flex={1} T={T} focused={focused} setFocused={setFocused} />
-          <StyledInput id="proc" placeholder="Procedimento" value={procedimento} onChangeText={setProcedimento} flex={1} T={T} focused={focused} setFocused={setFocused} />
-        </View>
+        <SectionLabel T={T}>Tipo de corte</SectionLabel>
+        <SeletorOpcoes T={T} opcoes={OPCOES_CORTE} valor={corte} onChange={setCorte} />
+
+        <SectionLabel T={T}>Procedimento</SectionLabel>
+        <StyledInput id="proc" placeholder="Ex: Degradê, Barba, Pintura" value={procedimento} onChangeText={setProcedimento} T={T} focused={focused} setFocused={setFocused} />
 
         <SectionLabel T={T}>Horário</SectionLabel>
         <View style={{ flexDirection: 'row', gap: 10 }}>
