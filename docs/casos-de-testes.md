@@ -5,7 +5,7 @@ Projeto: TCC Cabeleireiro (app mobile React Native + Supabase)
 **Ambiente:** Expo SDK 57, Expo Go no celular, Supabase (PostgreSQL), Windows.
 **Tipos de teste:** manual funcional, validação em banco via SQL, testes unitários automatizados (Jest).
 
-Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrado como limitação
+Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · 🔎 Em correção/reteste · ⚠️ Registrado como limitação
 
 ---
 
@@ -18,8 +18,9 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 | BUG-03 | Horário aceita texto inválido e agendamento é salvo sem data | Validação de entrada | Alta | 🐞 Corrigido |
 | BUG-04 | Reagendar apaga o original antes de validar o novo horário | Perda de dados | Alta | 🐞 Corrigido |
 | BUG-05 | Dois agendamentos no mesmo horário ou em horário bloqueado | Regra de negócio | Alta | 🐞 Corrigido |
-| BUG-06 | Relatórios não são regenerados após limpar o banco nem atualizados quando o total muda | Lógica / estado local | Média | 🐞 Causa confirmada; ver observação |
-| SEC-01 | Chave do Supabase e URL escritas no código-fonte | Segurança | Alta | 🐞 Corrigido (variáveis de ambiente) |
+| BUG-06 | Relatórios não são regenerados após limpar o banco nem atualizados quando o total muda | Lógica / estado local | Média | 🐞 Corrigido |
+| BUG-07 | Agendamento sem telefone (ou sem valor) parece salvo, mas não grava no banco | Tratamento de erro / tipos | Alta | 🐞 Corrigido (reteste manual dos casos 6 e 7 da seção 3.6 pendente) |
+| SEC-01 | Chave do Supabase e URL escritas no código-fonte | Segurança | Alta | 🐞 Corrigido |
 | SEC-02 | Políticas RLS liberam tudo ao papel `anon` (12 avisos do linter) | Segurança | Média | ⚠️ Limitação (app sem login) |
 
 ---
@@ -44,7 +45,7 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 - **Obtido:** erro e fechamento do app em `abrirWhatsApp`.
 - **Causa:** a coluna `telefone` é `bigint`; o Supabase devolve número, e o código chamava `.replace()` (método de texto).
 - **Correção:** `String(cliente.telefone || '')` antes do `replace`, e conversão para texto na montagem da lista de clientes.
-- **Verificação:** WhatsApp abriu com o número `+55` + DDD + número e a mensagem com `{nome}` substituído. Cliente sem telefone exibe alerta.
+- **Verificação:** WhatsApp abriu com o número `+55` + DDD + número e a mensagem com `{nome}` substituído.
 
 ### BUG-03: validação de horário e de data
 
@@ -52,15 +53,16 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 - **Obtido (antes):** qualquer texto era aceito; sem data selecionada, o registro era salvo como `" 14:30"`.
 - **Causa:** a validação só verificava se o texto não estava vazio.
 - **Correção:** função `normalizarHorario` (aceita `H:M`, devolve `HH:MM`, rejeita o restante) e validação de data e nome. A validação do reagendamento acontece dentro do modal.
-- **Verificação:** casos 1 a 9 da seção 3.1 e testes automatizados (`horario.test.js`).
+- **Verificação:** casos da seção 3.1 e testes automatizados (`horario.test.js`).
 
 ### BUG-04: reagendar apagava o agendamento original antes de validar
 
 - **Passos:** cancelar > "Cancelar e Reagendar" > informar horário inválido ou ocupado.
 - **Obtido (antes):** o agendamento original já havia sido apagado e o novo era recusado, resultando em perda do cliente.
 - **Causa:** a ordem das operações em `confirmarReagendamento` (apagar, depois salvar).
-- **Correção:** validar horário e conflito antes de apagar; só então apagar o original e salvar o novo.
+- **Correção:** validar horário e conflito antes de apagar o original.
 - **Verificação:** caso 6 da seção 3.2 (o original continua existindo após recusa).
+- **Observação:** o BUG-07 revelou que ainda havia um caminho de perda de dados (falha do banco depois de apagar o original). A correção do BUG-07 fecha esse caminho: o novo registro passa a ser gravado antes de o original ser apagado.
 
 ### BUG-05: agendamentos duplicados e em horário bloqueado
 
@@ -68,19 +70,29 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 - **Obtido (antes):** ambos eram aceitos.
 - **Causa:** `salvar` não consultava agendamentos existentes nem bloqueios.
 - **Correção:** `buscarConflito` consulta registros `pendente` e `bloqueado` do dia e compara a hora cheia.
-- **Verificação:** casos 1 a 8 da seção 3.2 e consulta SQL de duplicidade (zero linhas).
+- **Verificação:** casos da seção 3.2 e consulta SQL de duplicidade (zero linhas).
 
-### BUG-06: relatórios não eram gerados
+### BUG-06: relatórios não eram gerados nem atualizados
 
 - **Sintoma:** tabelas `Relatorios` e `Relatorio_Tri` vazias com o app aberto.
-- **Causa confirmada:** o app guarda no AsyncStorage a chave do último período gerado e, quando ela coincide com o período atual, pula a geração. Após esvaziar as tabelas no banco, o celular continuava "lembrando" que o relatório já existia.
-- **Defeito de lógica relacionado:** com essa trava, o total do mês é gravado uma única vez e nunca atualizado, contradizendo o aviso da tela (atualização automática).
-- **Correção proposta:** remover a trava, gravar somente quando o total mudar e registrar erros no console. **Confirmar no repositório se foi aplicada antes de marcar como encerrado.**
+- **Causa:** o app guardava no AsyncStorage a chave do último período gerado e, quando ela coincidia com o período atual, pulava a geração. Após esvaziar as tabelas no banco, o celular continuava "lembrando" que o relatório já existia. Além disso, o total do período era gravado uma única vez e nunca atualizado, contradizendo o aviso da tela (atualização automática).
+- **Correção:** removida a trava; o relatório é gravado somente quando o total muda; erros das chamadas ao banco passaram a ser registrados no console.
+- **Verificação:** ao concluir um novo atendimento, o total do relatório mensal e do trimestral é atualizado automaticamente em poucos segundos.
+
+### BUG-07: agendamento sem telefone parece salvo, mas não grava
+
+- **Descoberto durante:** o teste do envio de WhatsApp para cliente sem telefone (caso 3.4 nº 2).
+- **Passos:** na Home, preencher nome, data e horário, deixar o telefone em branco e confirmar o agendamento; consultar a tabela `Procedimentos`.
+- **Esperado:** o agendamento é gravado com telefone nulo, ou o app mostra uma mensagem de erro.
+- **Obtido:** o app não mostra erro e limpa o formulário, mas o registro não existe no banco.
+- **Causa provável:** o app envia `telefone: ''` (e `valor: ''`) para colunas `bigint` e `numeric`, e o banco rejeita texto vazio nesses tipos. O `salvar` não verificava o campo `error` do retorno do Supabase, então a falha era silenciosa. O mesmo vale para telefones digitados com máscara (por exemplo `(11) 99999-0001`) e valores com vírgula (`50,00`).
+- **Correção:** a conversão foi extraída para funções puras (`telefoneParaNumero` e `valorParaNumero` em `src/utils/conversoes.js`) e a gravação para `gravarAgendamento` (`src/services/agendamentos.js`), que recebe o cliente do banco como parâmetro. Telefone vira número (só dígitos) ou `null`; valor (aceitando vírgula) vira número ou `null`; o erro devolvido pelo banco é verificado e exibido em alerta; `salvar` passa a devolver sucesso ou falha. No reagendamento, o original só é apagado depois que o novo registro é gravado com sucesso.
+- **Reteste:** casos 1 a 5 da seção 3.6 cobertos por testes automatizados (`conversoes.test.js` e `agendamentos.test.js`, com banco simulado), todos passando. Casos 6 e 7 dependem do app e seguem para reteste manual.
 
 ### SEC-01: credenciais no código
 
 - **Achado:** URL e chave do Supabase escritas diretamente no código (e expostas no editor online usado inicialmente).
-- **Ação:** movidas para variáveis de ambiente (`.env`, ignorado pelo Git; `.env.example` versionado), chave anterior substituída.
+- **Ação:** movidas para variáveis de ambiente (`.env`, ignorado pelo Git; `.env.example` versionado). A chave anterior foi desativada no painel do Supabase.
 - **Verificação:** `git check-ignore -v .env` confirma que o arquivo é ignorado; `git status` não lista `.env`.
 
 ### SEC-02: avisos do linter do Supabase
@@ -134,11 +146,30 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 | # | Cenário | Esperado | Resultado |
 |---|---|---|---|
 | 1 | Cliente com telefone | WhatsApp abre com número e mensagem corretos | ✅ |
-| 2 | Cliente sem telefone | Alerta "Este cliente não tem telefone cadastrado." | A registrar |
+| 2 | Cliente sem telefone | Alerta "Este cliente não tem telefone cadastrado." | 🔎 Estava bloqueado pelo BUG-07 (o cliente sem telefone não chegava a ser gravado). Correção aplicada; reexecução manual pendente (caso 7 da seção 3.6) |
 
 ### 3.5 Regressão após refatoração
 
 Após dividir o `App.js` em componentes, telas, serviços e utilitários, todas as telas e fluxos foram testados novamente: Início, Agenda (linha e lista), Clientes, Relatório (abas mensal e trimestral), Configurações, concluir, cancelar, reagendar, bloqueio individual e em lote. Resultado: ✅ sem diferenças em relação ao comportamento anterior.
+
+### 3.6 Gravação com campos opcionais vazios (BUG-07)
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Agendar sem telefone | Grava com `telefone` nulo | ✅ Automatizado (`agendamentos.test.js`) |
+| 2 | Agendar sem valor | Grava com `valor` nulo | ✅ Automatizado |
+| 3 | Agendar com telefone mascarado `(11) 99999-0001` | Grava `11999990001` | ✅ Automatizado (`conversoes.test.js` e `agendamentos.test.js`) |
+| 4 | Agendar com valor `50,00` | Grava `50` | ✅ Automatizado |
+| 5 | Falha do banco | Devolve erro em vez de fingir sucesso; app exibe alerta | ✅ Automatizado (banco simulado) |
+| 6 | Reagendar com falha na gravação | Alerta; agendamento original continua existindo | 🔎 Manual, pendente |
+| 7 | Cliente salvo sem telefone, tocar em WhatsApp | Alerta "Este cliente não tem telefone cadastrado." | 🔎 Manual, pendente |
+
+Os casos automatizados validam a lógica de conversão e o tratamento de erro; a confirmação do registro no banco real e o fluxo de tela continuam sendo verificados manualmente.
+
+Conferência no banco após cada caso:
+```sql
+select id, nome_pessoa, telefone, valor, status from "Procedimentos" order by id desc limit 5;
+```
 
 ---
 
@@ -183,6 +214,10 @@ Executar com `npm test`.
 | `datas.test.js` | `formatarData`, `normalizarData` | formatos com espaço e com `T`, valores vazios |
 | `trimestre.test.js` | `trimestreAtual`, `labelTrimestre`, `rangeTrimestrre` | todos os meses, início e fim dos trimestres, relógio simulado |
 | `servicos.test.js` | `agruparServicos` | caso do `degrade`, receita só de concluídos, espaços, nulos, ordenação, limite |
+| `conversoes.test.js` | `telefoneParaNumero`, `valorParaNumero` | máscara, vírgula, "R$", separador de milhar, vazio, nulo e texto |
+| `agendamentos.test.js` | `gravarAgendamento` | telefone e valor nulos, conversões, status pendente, falha do banco (cliente simulado) |
+
+Resultado da última execução: 7 suites passando.
 
 ---
 
@@ -191,5 +226,6 @@ Executar com `npm test`.
 - Testes de interface com React Native Testing Library (formulário da Home, modais).
 - Testes de integração do fluxo de agendamento com banco de teste.
 - Migrar `horario_atendimento` para `timestamp` e `telefone` para `text`.
+- Verificar o retorno de erro de todas as chamadas ao Supabase (concluir, cancelar, desbloquear ainda não tratam falhas).
 - Autenticação com Supabase Auth e políticas RLS por usuário.
 - Pipeline de CI (GitHub Actions) rodando `npm test` a cada push.

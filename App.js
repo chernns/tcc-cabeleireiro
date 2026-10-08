@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
 import { buscarConflito } from './src/services/agenda';
 import { DARK, LIGHT } from './src/theme';
+import { gravarAgendamento } from './src/services/agendamentos';
 
 //utils//
 
@@ -200,26 +201,42 @@ export default function App() {
   // Carrega lista de relatórios ao entrar na aba
   useEffect(() => { if (tela === 'relatorio') buscarRelatorios(); }, [tela]);
 
-  async function salvar(dadosExtras = null) {
+  async function salvar(dadosExtras = null, ignorarId = null) {
     const n  = dadosExtras?.nome_pessoa || nome;
     const d  = dadosExtras?.horario_atendimento?.split(' ')[0] || dadosExtras?.horario_atendimento?.split('T')[0] || dataHome;
     const hBruto = dadosExtras ? (dadosExtras.horario_atendimento.split(' ')[1] || '') : horario;
     const h = normalizarHorario(hBruto);
-    if (!n.trim()) { alert('Preencha o nome!'); return; }
-    if (!d) { alert('Selecione uma data no calendário!'); return; }
-    if (!h) { alert('Horário inválido. Use o formato HH:MM, por exemplo 14:30.'); return; }
+    if (!n.trim()) { alert('Preencha o nome!'); return false; }
+    if (!d) { alert('Selecione uma data no calendário!'); return false; }
+    if (!h) { alert('Horário inválido. Use o formato HH:MM, por exemplo 14:30.'); return false; }
     const dt = `${d} ${h}`;
+
     const conflito = await buscarConflito(dt);
-    if (conflito?.erro) { alert('Não foi possível verificar a disponibilidade. Tente novamente.'); return; }
-    if (conflito) {
+    if (conflito?.erro) { alert('Não foi possível verificar a disponibilidade. Tente novamente.'); return false; }
+    if (conflito && conflito.id !== ignorarId) {
       alert(conflito.status === 'bloqueado'
         ? 'Este horário está bloqueado.'
         : `Já existe um agendamento neste horário (${conflito.nome_pessoa}).`);
-      return;
+      return false;
     }
-    await supabase.from('Procedimentos').insert([{ nome_pessoa: n, tipo_corte: dadosExtras?.tipo_corte||corte, nome_procedimento: dadosExtras?.nome_procedimento||procedimento, carga_horaria: dadosExtras?.carga_horaria||duracao, horario_atendimento: dt, telefone: dadosExtras?.telefone||telefone, valor: dadosExtras?.valor||valor, status: 'pendente' }]);
+
+    // telefone e valor: converter para número ou null (as colunas são bigint e numeric)
+
+    const resultado = await gravarAgendamento(supabase, {
+      nome_pessoa: n,
+      tipo_corte: dadosExtras?.tipo_corte || corte,
+      nome_procedimento: dadosExtras?.nome_procedimento || procedimento,
+      carga_horaria: dadosExtras?.carga_horaria || duracao,
+      horario_atendimento: dt,
+      telefone: dadosExtras?.telefone ?? telefone,
+      valor: dadosExtras?.valor ?? valor,
+    });
+    if (!resultado.ok) { alert('Erro ao salvar o agendamento: ' + resultado.erro); return false; }
+    if (error) { alert('Erro ao salvar o agendamento: ' + error.message); return false; }
+
     if (!dadosExtras) { setNome(''); setHorario(''); setTelefone(''); setValor(''); setCorte(''); setProcedimento(''); setDuracao(''); }
     buscar();
+    return true;
   }
 
   async function confirmarConclusao() {
@@ -237,15 +254,11 @@ export default function App() {
     setTimeout(() => setReagendandoItem(item), 300);
   }
   async function confirmarReagendamento(dados) {
-    const dt = dados.horario_atendimento;
-    const conflito = await buscarConflito(dt);
-    if (conflito?.erro) { alert('Não foi possível verificar a disponibilidade. Tente novamente.'); return; }
-    if (conflito && conflito.id !== reagendandoItem?.id) {
-      alert(conflito.status === 'bloqueado' ? 'Este horário está bloqueado.' : `Já existe um agendamento neste horário (${conflito.nome_pessoa}).`);
-      return;
-    }
+    const ok = await salvar(dados, reagendandoItem?.id);
+    if (!ok) return; // algo falhou: o original continua existindo
     if (reagendandoItem) await supabase.from('Procedimentos').delete().eq('id', reagendandoItem.id);
-    await salvar(dados); setReagendandoItem(null); buscar();
+    setReagendandoItem(null);
+    buscar();
   }
   async function confirmarBloqueio(motivo) {
     if (!bloqueioModal || !dataAgenda) return;
