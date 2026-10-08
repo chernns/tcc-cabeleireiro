@@ -24,7 +24,7 @@ export function HomeScreen({
 }) {
   const {
     nome, setNome, corte, setCorte, procedimento, setProcedimento,
-    duracao, setDuracao, horario, setHorario, telefone, setTelefone,
+    horario, setHorario, telefone, setTelefone,
     valor, setValor, focused, setFocused,
   } = form;
 
@@ -77,7 +77,6 @@ export function HomeScreen({
         ) : (
           <SeletorHorario T={T} slots={slots} valor={horario} onChange={setHorario} desabilitados={desabilitados} />
         )}
-        <StyledInput id="dur" placeholder={`Duração (padrão: ${intervalo}min)`} value={duracao} onChangeText={setDuracao} T={T} focused={focused} setFocused={setFocused} />
 
         <SectionLabel T={T}>Contato & Valor</SectionLabel>
         <View style={{ flexDirection: 'row', gap: 10 }}>

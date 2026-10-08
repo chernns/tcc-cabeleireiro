@@ -213,6 +213,12 @@ Os casos automatizados validam a lógica de conversão e o tratamento de erro; a
 | 16 | Reagendar para horário ocupado ou bloqueado | Botão desabilitado | ✅ |
 | 17 | Reagendar para horário livre | Original removido, novo criado | ✅ |
 | 18 | Calendário sem data selecionada (BUG-08) | Células fora do mês sem destaque | ✅ |
+| 19 | Home: formulário de agendamento | Sem campo de duração; botões de horário seguidos de "Contato & Valor" | ✅ |
+| 20 | Criar agendamento completo | Salva e o formulário limpa | ✅ |
+| 21 | Cancelar e Reagendar | Modal sem campo de duração; reagendamento funciona | ✅ |
+| 22 | Banco após agendar | `carga_horaria` nulo no novo registro | ✅ |
+| 23 | Busca por `duracao` e `setDuracao` no código | Nenhuma referência restante | ✅ |
+| 24 | `npm test` após a remoção | 10 suites passando | ✅ |
 
 ---
 
@@ -231,6 +237,7 @@ A lógica está em `src/utils/conflito.js` (`encontrarConflito`) e é coberta po
 
 - **Tipo de corte:** campo de texto livre substituído por seleção entre opções fixas (Masculino e Feminino), reduzindo variações de digitação.
 - **Horário:** campo de texto `HH:MM` substituído por botões gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos). A lógica está em `src/utils/slots.js` (`gerarSlots`, `calcularDesabilitados`).
+- **Duração:** campo removido da Home e do reagendamento, por ser desnecessário (nenhuma regra dependia dele; conflitos e horários usam apenas o intervalo da Config). A coluna `carga_horaria` foi mantida no banco para preservar o histórico: novos agendamentos gravam valor nulo e os antigos conservam o valor que tinham.
 
 ---
 
@@ -290,7 +297,7 @@ Executar com `npm test`. Última execução: 10 suites passando.
 
 - Testes de interface com React Native Testing Library (formulário da Home, modais, seletores).
 - Teste de integração para `salvar` (evitaria regressões como o BUG-09).
-- Considerar a duração do atendimento na regra de conflito (hoje um corte longo não bloqueia os horários seguintes).
+- Se o salão passar a precisar de atendimentos com durações diferentes, reintroduzir a duração e considerá-la na regra de conflito (hoje cada agendamento ocupa apenas o seu horário).
 - Migrar `horario_atendimento` para `timestamp` e `telefone` para `text`.
 - Verificar o retorno de erro de todas as chamadas ao Supabase (concluir, cancelar, desbloquear ainda não tratam falhas).
 - Autenticação com Supabase Auth e políticas RLS por usuário.

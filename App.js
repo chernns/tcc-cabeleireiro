@@ -67,7 +67,7 @@ export default function App() {
 
   const [nome, setNome] = useState(''), [horario, setHorario] = useState(''), [telefone, setTelefone] = useState('');
   const [valor, setValor] = useState(''), [corte, setCorte] = useState(''), [procedimento, setProcedimento] = useState('');
-  const [duracao, setDuracao] = useState(''), [focused, setFocused] = useState('');
+  const [focused, setFocused] = useState('');
 
   const [itemParaCancelar, setItemParaCancelar]   = useState(null);
   const [itemParaConcluir, setItemParaConcluir]   = useState(null);
@@ -227,14 +227,13 @@ export default function App() {
       nome_pessoa: n,
       tipo_corte: dadosExtras?.tipo_corte || corte,
       nome_procedimento: dadosExtras?.nome_procedimento || procedimento,
-      carga_horaria: dadosExtras?.carga_horaria || duracao,
       horario_atendimento: dt,
       telefone: dadosExtras?.telefone ?? telefone,
       valor: dadosExtras?.valor ?? valor,
     });
     if (!resultado.ok) { alert('Erro ao salvar o agendamento: ' + resultado.erro); return false; }
 
-    if (!dadosExtras) { setNome(''); setHorario(''); setTelefone(''); setValor(''); setCorte(''); setProcedimento(''); setDuracao(''); }
+    if (!dadosExtras) { setNome(''); setHorario(''); setTelefone(''); setValor(''); setCorte(''); setProcedimento(''); }
     buscar();
     return true;
   }
@@ -301,7 +300,7 @@ export default function App() {
   const clientesFiltrados = buscaCliente.trim() ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase().trim())) : clientes;
   const form = {
     nome, setNome, corte, setCorte, procedimento, setProcedimento,
-    duracao, setDuracao, horario, setHorario, telefone, setTelefone,
+    horario, setHorario, telefone, setTelefone,
     valor, setValor, focused, setFocused,
   };
 

@@ -20,7 +20,7 @@ export function EditModal({
 }) {
   const [nome, setNome] = useState(''), [horario, setHorario] = useState(''), [telefone, setTelefone] = useState('');
   const [valor, setValor] = useState(''), [corte, setCorte] = useState(''), [procedimento, setProcedimento] = useState('');
-  const [duracao, setDuracao] = useState(''), [dataEdit, setDataEdit] = useState(''), [focused, setFocused] = useState('');
+  const [dataEdit, setDataEdit] = useState(''), [focused, setFocused] = useState('');
   const [mostrarCal, setMostrarCal] = useState(false);
   const isReagendar = !item && !!dataInicial;
 
@@ -36,7 +36,6 @@ export function EditModal({
     setValor(item.valor ? String(item.valor) : '');
     setCorte(item.tipo_corte ? String(item.tipo_corte) : '');
     setProcedimento(item.nome_procedimento ? String(item.nome_procedimento) : '');
-    setDuracao(item.carga_horaria ? String(item.carga_horaria) : '');
     const dt = item.horario_atendimento ? new Date(item.horario_atendimento) : new Date();
     setHorario(`${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`);
     const raw = item.horario_atendimento || '';
@@ -53,7 +52,6 @@ export function EditModal({
     setCorte(dadosCliente.tipo_corte ? String(dadosCliente.tipo_corte) : '');
     setProcedimento(dadosCliente.nome_procedimento ? String(dadosCliente.nome_procedimento) : '');
     setValor(dadosCliente.valor ? String(dadosCliente.valor) : '');
-    setDuracao(dadosCliente.carga_horaria ? String(dadosCliente.carga_horaria) : '');
     setHorario('');
   }, [dadosCliente, isReagendar]);
 
@@ -69,7 +67,7 @@ export function EditModal({
     if (!dataEdit) { alert('Selecione uma data!'); return; }
     const h = normalizarHorario(horario);
     if (!h) { alert('Selecione um horário.'); return; }
-    onSalvar({ nome_pessoa: nome, tipo_corte: corte, nome_procedimento: procedimento, carga_horaria: duracao, horario_atendimento: `${dataEdit} ${h}`, telefone, valor });
+    onSalvar({ nome_pessoa: nome, tipo_corte: corte, nome_procedimento: procedimento, horario_atendimento: `${dataEdit} ${h}`, telefone, valor });
   }
 
   const inp = (id, ph, val, setter, extra = {}) => (
@@ -117,7 +115,6 @@ export function EditModal({
           ) : (
             <SeletorHorario T={T} slots={slots} valor={horario} onChange={setHorario} desabilitados={desabilitados} />
           )}
-          {inp('dur', 'Duração', duracao, setDuracao)}
 
           {lbl('Contato & Valor')}
           <View style={{ flexDirection: 'row', gap: 10 }}>

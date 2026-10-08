@@ -4,8 +4,9 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 
 ## Funcionalidades
 
-- Agendamento de clientes com data, horário, serviço e valor
-- Validação de horário (`HH:MM`) e bloqueio de conflitos (horário já ocupado ou bloqueado)
+- Agendamento de clientes com data, horário, tipo de corte, serviço e valor
+- Horários escolhidos por botões, gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos); horários ocupados, bloqueados ou já passados ficam indisponíveis
+- Bloqueio de conflitos (horário já ocupado ou bloqueado)
 - Agenda com visualização em linha do tempo ou lista
 - Bloqueio de horários, individual ou em lote (vários dias)
 - Concluir, cancelar e reagendar atendimentos
@@ -46,7 +47,7 @@ O app usa três tabelas no Supabase: `Procedimentos`, `Relatorios` e `Relatorio_
 npm test
 ```
 
-Os testes automatizados cobrem as funções puras em `src/utils/` (horário, datas, trimestres, formatação e agrupamento de serviços). Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
+Os testes automatizados (10 suites) cobrem as funções puras em `src/utils/` (horário, datas, trimestres, formatação, agrupamento de serviços, conversões, geração de horários, conflitos e horários indisponíveis) e a gravação de agendamentos, com o banco simulado. Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
 
 ## Estrutura do projeto
 
@@ -56,7 +57,7 @@ src/
   components/         calendário, modais, cards e demais componentes
   screens/            Home, Agenda, Clientes, Relatório, Config
   services/           cliente Supabase e consulta de conflitos
-  utils/              horário, datas, trimestre, formatadores, serviços
+  utils/              horário, datas, trimestre, formatadores, serviços, conversões, slots, conflito
   theme.js            temas claro e escuro
   constants.js
 __tests__/            testes automatizados (Jest)
@@ -65,7 +66,7 @@ docs/                 documentação de testes
 
 ## Qualidade e testes
 
-Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar e agendamentos duplicados.
+Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar, agendamentos duplicados, falha silenciosa ao gravar campos opcionais vazios e um defeito visual no calendário.
 
 ## Limitações conhecidas
 
@@ -73,9 +74,9 @@ Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos
 - **`horario_atendimento` é texto** (`varchar`) e existem dois formatos (`2026-10-07 10:00` e `2026-10-07T10:00:00`). Melhoria futura: migrar para `timestamp`.
 - **`telefone` é `bigint`**, o que descarta zeros à esquerda. Melhoria futura: usar `text`.
 - **Atualização por polling** a cada 5 segundos. Melhoria futura: Supabase Realtime.
-- **Conflito por hora cheia:** a agenda trata cada hora como um bloco único, sem considerar a duração do atendimento.
+- **Sem duração de atendimento:** cada agendamento ocupa apenas o seu horário na grade definida pelo intervalo configurado, e um atendimento longo não impede agendar nos horários seguintes. Bloqueios, por outro lado, valem para a hora inteira.
 - Os intervalos de relatório usam `toISOString()` (UTC) contra uma coluna de texto, o que pode deixar atendimentos noturnos do último dia do período fora do total.
 
 ## Autor
 
-Seu Nome — [LinkedIn](https://www.linkedin.com/in/arthur-henrique-da-silva-gomes-07a499298/) · [GitHub](https://github.com/chernns)
+Seu Nome — [LinkedIn](https://linkedin.com/in/seu-perfil) · [GitHub](https://github.com/seu-usuario)
