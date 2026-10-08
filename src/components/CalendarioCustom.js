@@ -63,7 +63,7 @@ export function CalendarioCustom({ markedDates = {}, onDayPress, selectedDate, s
                 const valido = dia >= 1 && dia <= totalDias;
                 const ds = valido ? dateStr(dia) : '';
                 const passado = valido && ehPassado(ds), ehHoje = ds === hojeStr;
-                const ehSel = multiSelect ? (selectedDates instanceof Set && selectedDates.has(ds)) : ds === selectedDate;
+                const ehSel = valido && (multiSelect ? (selectedDates instanceof Set && selectedDates.has(ds)) : ds === selectedDate);
                 const temMarca = valido && !!markedDates[ds], fimSemana = col === 0 || col === 6;
                 const clicavel = valido && !passado;
                 return (
