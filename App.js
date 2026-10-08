@@ -16,9 +16,9 @@ import { gravarAgendamento } from './src/services/agendamentos';
 
 //------------------UTILS-------------------//
 
-import { trimestreAtual, labelTrimestre, rangeTrimestrre } from './src/utils/trimestre';
+import { trimestreAtual, labelTrimestre, limitesTrimestre } from './src/utils/trimestre';
+import { normalizarData, dataLocal, limitesMes } from './src/utils/datas';
 import { normalizarHorario } from './src/utils/horario';
-import { normalizarData } from './src/utils/datas';
 import { agruparServicos } from './src/utils/servicos';
 
 //-----------------COMPONENTS--------------------//
@@ -29,9 +29,9 @@ import { EditModal } from './src/components/EditModal';
 
 //-------------------screens---------------------//
 
-import { ConfigScreen } from './src/screens/ConfigScreen';
 import { RelatorioScreen } from './src/screens/RelatorioScreen';
 import { ClientesScreen } from './src/screens/ClientesScreen';
+import { ConfigScreen } from './src/screens/ConfigScreen';
 import { AgendaScreen } from './src/screens/AgendaScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 
@@ -98,13 +98,12 @@ export default function App() {
 
   // Gera / atualiza relatório mensal silenciosamente
   async function gerarRelatorioMensalAuto() {
-    const agora     = new Date();
-    const mesLabel  = agora.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
-    const fimMes    = new Date(agora.getFullYear(), agora.getMonth()+1, 0, 23, 59, 59).toISOString();
+    const agora    = new Date();
+    const mesLabel = agora.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    const { inicio, fim } = limitesMes(agora.getFullYear(), agora.getMonth());
 
     const { data: concluidos, error: e1 } = await supabase.from('Procedimentos').select('valor')
-      .eq('status','concluido').gte('horario_atendimento',inicioMes).lte('horario_atendimento',fimMes);
+      .eq('status','concluido').gte('horario_atendimento', inicio).lt('horario_atendimento', fim);
     if (e1) { console.log('Relatório mensal (busca):', e1.message); return; }
 
     const total = (concluidos||[]).reduce((acc,i) => acc+Number(i.valor||0), 0);
@@ -124,10 +123,10 @@ export default function App() {
   async function gerarRelatorioTrimestralAuto() {
     const { tri, ano } = trimestreAtual();
     const label = labelTrimestre(tri, ano);
-    const { inicio, fim } = rangeTrimestrre(tri, ano);
+    const { inicio, fim } = limitesTrimestre(tri, ano);
 
     const { data: concluidos, error: e1 } = await supabase.from('Procedimentos').select('valor')
-      .eq('status','concluido').gte('horario_atendimento',inicio).lte('horario_atendimento',fim);
+      .eq('status','concluido').gte('horario_atendimento', inicio).lt('horario_atendimento', fim);
     if (e1) { console.log('Relatório trimestral (busca):', e1.message); return; }
 
     const total = (concluidos||[]).reduce((acc,i) => acc+Number(i.valor||0), 0);
@@ -169,7 +168,7 @@ export default function App() {
     const receitaTotal = (concluidos||[]).reduce((acc,i) => acc + Number(i.valor||0), 0);
     setDadosGrafico({ labels: ultimos, values: ultimos.map(k => mapa[k]), total: (concluidos||[]).length, receitaTotal });
     const marcar = (arr, dataAtiva) => {
-      let m = {}; (arr||[]).forEach(i => { const d=i.horario_atendimento.split('T')[0]; m[d]={marked:true,dotColor:T.accent}; });
+      let m = {}; (arr||[]).forEach(i => { const d=normalizarData(i.horario_atendimento); m[d]={marked:true,dotColor:T.accent}; });
       if (dataAtiva) m[dataAtiva]={...(m[dataAtiva]||{}),selected:true,selectedColor:T.accent}; return m;
     };
     setAgendaHome(marcar(futuros, dataHome)); setAgendaAgenda(marcar(futuros, dataAgenda));
@@ -314,7 +313,7 @@ export default function App() {
       <ConcluirModal visible={!!itemParaConcluir} item={itemParaConcluir} T={T} onConfirm={confirmarConclusao} onCancel={() => setItemParaConcluir(null)} />
       <ConfirmModal  visible={!!itemParaCancelar} item={itemParaCancelar} T={T} onConfirm={confirmarCancelamento} onCancel={() => setItemParaCancelar(null)} onReagendar={iniciarReagendamento} />
       <EditModal visible={!!reagendandoItem} item={null} dadosCliente={reagendandoItem} T={T}
-      dataInicial={dataAgenda || dataHome || new Date().toISOString().split('T')[0]}
+      dataInicial={dataAgenda || dataHome || dataLocal()}
       lista={lista} bloqueios={bloqueios} horaInicio={horaInicio} horaFim={horaFim} intervalo={intervalo}
       onSalvar={confirmarReagendamento} onFechar={() => setReagendandoItem(null)} />
       <BloqueioModal visible={!!bloqueioModal} hora={bloqueioModal?.hora} data={dataAgenda} T={T} onConfirm={confirmarBloqueio} onCancel={() => setBloqueioModal(null)} />

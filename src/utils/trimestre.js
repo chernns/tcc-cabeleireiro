@@ -1,3 +1,5 @@
+import { dataLocal } from './datas';
+
 export function trimestreAtual() {
   const agora = new Date();
   const tri   = Math.floor(agora.getMonth() / 3) + 1; // 1..4
@@ -10,10 +12,11 @@ export function labelTrimestre(tri, ano) {
   return `${nomes[tri]} ${ano}`;
 }
 
-export function rangeTrimestrre(tri, ano) {
+// Limites em texto: início inclusivo, fim exclusivo.
+export function limitesTrimestre(tri, ano) {
   const mesInicio = (tri - 1) * 3;
-  const mesFim    = mesInicio + 2;
-  const inicio    = new Date(ano, mesInicio, 1).toISOString();
-  const fim       = new Date(ano, mesFim + 1, 0, 23, 59, 59).toISOString();
-  return { inicio, fim };
+  return {
+    inicio: dataLocal(new Date(ano, mesInicio, 1)),
+    fim: dataLocal(new Date(ano, mesInicio + 3, 1)),
+  };
 }
