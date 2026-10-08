@@ -81,7 +81,7 @@ export default function App() {
     AsyncStorage.getItem('msgLembrete').then(v => { if (v) setMsgLembrete(v); });
     AsyncStorage.getItem('horaInicio').then(v => { if (v !== null) setHoraInicio(Number(v)); });
     AsyncStorage.getItem('horaFim').then(v => { if (v !== null) setHoraFim(Number(v)); });
-    AsyncStorage.getItem('intervalo').then(v => { if (v !== null) setIntervalo(Number(v)); });
+    AsyncStorage.getItem('intervalo').then(v => { if (v !== null) setIntervalo(Math.max(15, Number(v))); });
     // Restaura última geração para não repetir após reiniciar o app
 
   }, []);
@@ -208,9 +208,9 @@ export default function App() {
     const h = normalizarHorario(hBruto);
     if (!n.trim()) { alert('Preencha o nome!'); return false; }
     if (!d) { alert('Selecione uma data no calendário!'); return false; }
-    if (!h) { alert('Horário inválido. Use o formato HH:MM, por exemplo 14:30.'); return false; }
+    if (!h) { alert(dadosExtras ? 'Horário inválido. Use o formato HH:MM, por exemplo 14:30.' : 'Selecione um horário.'); return false; }
     const dt = `${d} ${h}`;
-
+  
     const conflito = await buscarConflito(dt);
     if (conflito?.erro) { alert('Não foi possível verificar a disponibilidade. Tente novamente.'); return false; }
     if (conflito && conflito.id !== ignorarId) {
@@ -219,8 +219,6 @@ export default function App() {
         : `Já existe um agendamento neste horário (${conflito.nome_pessoa}).`);
       return false;
     }
-
-    // telefone e valor: converter para número ou null (as colunas são bigint e numeric)
 
     const resultado = await gravarAgendamento(supabase, {
       nome_pessoa: n,
@@ -232,7 +230,6 @@ export default function App() {
       valor: dadosExtras?.valor ?? valor,
     });
     if (!resultado.ok) { alert('Erro ao salvar o agendamento: ' + resultado.erro); return false; }
-    if (error) { alert('Erro ao salvar o agendamento: ' + error.message); return false; }
 
     if (!dadosExtras) { setNome(''); setHorario(''); setTelefone(''); setValor(''); setCorte(''); setProcedimento(''); setDuracao(''); }
     buscar();
@@ -314,7 +311,10 @@ export default function App() {
 
       <ConcluirModal visible={!!itemParaConcluir} item={itemParaConcluir} T={T} onConfirm={confirmarConclusao} onCancel={() => setItemParaConcluir(null)} />
       <ConfirmModal  visible={!!itemParaCancelar} item={itemParaCancelar} T={T} onConfirm={confirmarCancelamento} onCancel={() => setItemParaCancelar(null)} onReagendar={iniciarReagendamento} />
-      <EditModal     visible={!!reagendandoItem}  item={null} dadosCliente={reagendandoItem} T={T} dataInicial={dataAgenda || dataHome || new Date().toISOString().split('T')[0]} onSalvar={confirmarReagendamento} onFechar={() => setReagendandoItem(null)} />
+      <EditModal visible={!!reagendandoItem} item={null} dadosCliente={reagendandoItem} T={T}
+      dataInicial={dataAgenda || dataHome || new Date().toISOString().split('T')[0]}
+      lista={lista} bloqueios={bloqueios} horaInicio={horaInicio} horaFim={horaFim} intervalo={intervalo}
+      onSalvar={confirmarReagendamento} onFechar={() => setReagendandoItem(null)} />
       <BloqueioModal visible={!!bloqueioModal} hora={bloqueioModal?.hora} data={dataAgenda} T={T} onConfirm={confirmarBloqueio} onCancel={() => setBloqueioModal(null)} />
       <BloqueioLoteModal visible={bloqueioLoteModal} T={T} onFechar={() => setBloqueioLoteModal(false)} onConfirmar={confirmarBloqueioLote} />
 
@@ -341,9 +341,9 @@ export default function App() {
 
       {/* HOME */}
       {tela === 'home' && (
-        <HomeScreen T={T} dark={dark} lista={lista} agendaHome={agendaHome}
+        <HomeScreen T={T} dark={dark} lista={lista} bloqueios={bloqueios} agendaHome={agendaHome}
           dataHome={dataHome} setDataHome={setDataHome}
-          form={form} intervalo={intervalo} salvar={salvar}
+          form={form} intervalo={intervalo} horaInicio={horaInicio} horaFim={horaFim} salvar={salvar}
           setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar} />
       )}
 
