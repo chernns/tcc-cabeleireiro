@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,20 +10,32 @@ import { SectionLabel, StyledInput } from '../components/FormFields';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { AppointmentCard } from '../components/AppointmentCard';
 import { SeletorOpcoes, OPCOES_CORTE } from '../components/SeletorOpcoes';
+import { SeletorHorario } from '../components/SeletorHorario';
 
 //-----------------utils-----------------//
 
 import { formatarData } from '../utils/datas';
+import { gerarSlots, calcularDesabilitados } from '../utils/slots';
+
 
 export function HomeScreen({
-  T, dark, lista, agendaHome, dataHome, setDataHome,
-  form, intervalo, salvar, setItemParaConcluir, setItemParaCancelar,
+  T, dark, lista, bloqueios, agendaHome, dataHome, setDataHome,
+  form, intervalo, horaInicio, horaFim, salvar, setItemParaConcluir, setItemParaCancelar,
 }) {
   const {
     nome, setNome, corte, setCorte, procedimento, setProcedimento,
     duracao, setDuracao, horario, setHorario, telefone, setTelefone,
     valor, setValor, focused, setFocused,
   } = form;
+
+  // Horários do dia e quais não podem ser escolhidos
+  const slots = gerarSlots(horaInicio, horaFim, intervalo);
+  const desabilitados = calcularDesabilitados({ slots, data: dataHome, lista, bloqueios });
+
+  // Se o horário escolhido deixou de ser válido (outra data, intervalo mudou, ficou ocupado), limpa
+  useEffect(() => {
+    if (horario && (!slots.includes(horario) || desabilitados.has(horario))) setHorario('');
+  }, [dataHome, lista, bloqueios, horaInicio, horaFim, intervalo]);
 
   return (
     <ScrollView
@@ -58,10 +70,14 @@ export function HomeScreen({
         <StyledInput id="proc" placeholder="Ex: Degradê, Barba, Pintura" value={procedimento} onChangeText={setProcedimento} T={T} focused={focused} setFocused={setFocused} />
 
         <SectionLabel T={T}>Horário</SectionLabel>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <StyledInput id="dur" placeholder={`Duração (padrão: ${intervalo}min)`} value={duracao} onChangeText={setDuracao} flex={1} T={T} focused={focused} setFocused={setFocused} />
-          <StyledInput id="hora" placeholder="14:00" value={horario} onChangeText={setHorario} flex={1} T={T} focused={focused} setFocused={setFocused} />
-        </View>
+        {!dataHome ? (
+          <Text style={{ color: T.placeholder, fontSize: 13, marginTop: 8 }}>Selecione uma data acima para ver os horários.</Text>
+        ) : slots.length === 0 ? (
+          <Text style={{ color: T.placeholder, fontSize: 13, marginTop: 8 }}>Nenhum horário disponível. Confira o horário de funcionamento e o intervalo em Config.</Text>
+        ) : (
+          <SeletorHorario T={T} slots={slots} valor={horario} onChange={setHorario} desabilitados={desabilitados} />
+        )}
+        <StyledInput id="dur" placeholder={`Duração (padrão: ${intervalo}min)`} value={duracao} onChangeText={setDuracao} T={T} focused={focused} setFocused={setFocused} />
 
         <SectionLabel T={T}>Contato & Valor</SectionLabel>
         <View style={{ flexDirection: 'row', gap: 10 }}>

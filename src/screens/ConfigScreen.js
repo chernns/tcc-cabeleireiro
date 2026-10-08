@@ -3,9 +3,9 @@ import { View, Text, TextInput, ScrollView, Switch, TouchableOpacity } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 
 export function ConfigScreen({
-  T, dark, setDark,
-  horaInicio, setHoraInicio, horaFim, setHoraFim,
-  intervalo, setIntervalo, msgLembrete, setMsgLembrete,
+    T, dark, setDark,
+    horaInicio, setHoraInicio, horaFim, setHoraFim,
+    intervalo, setIntervalo, msgLembrete, setMsgLembrete,
 }) {
     return (
         <ScrollView contentContainerStyle={{ padding: 18 }} showsVerticalScrollIndicator indicatorStyle={dark ? 'white' : 'black'}>
@@ -50,9 +50,9 @@ export function ConfigScreen({
             </View>
             <Text style={{ color: T.accent, fontSize: 10, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>Intervalo entre Atendimentos</Text>
             <View style={{ backgroundColor: T.surface, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, padding: 18, marginBottom: 24 }}>
-                <Text style={{ color: T.textSub, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>Duração padrão sugerida no campo "Duração" ao criar um novo agendamento.</Text>
+                <Text style={{ color: T.textSub, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>Define o espaço entre os horários ao agendar. Ex.: 30 min gera 14:00, 14:30, 15:00.</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <TouchableOpacity onPress={() => setIntervalo(i => Math.max(5, i-5))} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="remove" size={20} color={T.accent} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setIntervalo(i => Math.max(15, i-5))} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: T.accentGlow, borderWidth: 1, borderColor: T.accentDim, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="remove" size={20} color={T.accent} /></TouchableOpacity>
                         <View style={{ alignItems: 'center' }}>
                             <Text style={{ color: T.accent, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{intervalo}</Text>
                             <Text style={{ color: T.textSub, fontSize: 12, marginTop: 2 }}>minutos</Text>
