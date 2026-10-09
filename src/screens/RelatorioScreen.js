@@ -71,7 +71,7 @@ export function RelatorioScreen({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: T.accentGlow, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: T.accentDim, marginBottom: 16 }}>
                 <Ionicons name="sync-outline" size={16} color={T.accent} />
                 <Text style={{ color: T.accent, fontSize: 12, fontWeight: '600', flex: 1 }}>
-                Relatórios atualizados automaticamente a cada 5 segundos — sem precisar apertar nada.
+                Relatórios atualizados automaticamente sempre que houver mudanças.
                 </Text>
             </View>
 

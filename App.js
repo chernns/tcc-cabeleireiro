@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar, Linking, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -190,18 +190,47 @@ export default function App() {
     return bloqueados || [];
   }
 
-  // ✅ Polling: busca dados + gera relatórios automaticamente a cada 5s
+  // Guarda sempre a versão mais recente da atualização, para os listeners não usarem estado antigo
+  const atualizarRef = useRef(null);
+  const timerRef = useRef(null);
+
+  async function atualizarTudo() {
+    await buscar();
+    await gerarRelatorioMensalAuto();
+    await gerarRelatorioTrimestralAuto();
+  }
+  atualizarRef.current = atualizarTudo;
+
+  // Agrupa rajadas de eventos (ex.: bloqueio em lote) em uma única atualização
+  function agendarAtualizacao() {
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => atualizarRef.current(), 400);
+  }
+
+  // Refaz a busca quando muda data selecionada ou tema (as marcações do calendário dependem deles)
+  useEffect(() => { atualizarRef.current(); }, [dataHome, dataAgenda, dark]);
+
+  // Realtime + reforços: ao voltar para o app e uma verificação lenta caso a conexão tenha caído
   useEffect(() => {
-    async function tick() {
-      await buscar();
-      // Gera relatórios silenciosamente (só uma vez por período)
-      await gerarRelatorioMensalAuto();
-      await gerarRelatorioTrimestralAuto();
-    }
-    tick();
-    const id = setInterval(tick, 5000);
-    return () => clearInterval(id);
-  }, [dataHome, dataAgenda, dark]);
+    const canal = supabase
+      .channel('procedimentos-mudancas')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Procedimentos' }, agendarAtualizacao)
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') console.log('Realtime:', status);
+      });
+
+    const assinatura = AppState.addEventListener('change', estado => {
+      if (estado === 'active') atualizarRef.current();
+    });
+    const id = setInterval(() => atualizarRef.current(), 60000);
+
+    return () => {
+      supabase.removeChannel(canal);
+      assinatura.remove();
+      clearInterval(id);
+      clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Carrega lista de relatórios ao entrar na aba
   useEffect(() => { if (tela === 'relatorio') buscarRelatorios(); }, [tela]);
