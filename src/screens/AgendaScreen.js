@@ -19,7 +19,7 @@ export function AgendaScreen({
     T, dark, lista, agendaAgenda, dataAgenda, setDataAgenda,
     bloqueiosDoDia, horaInicio, horaFim, modoAgenda, setModoAgenda,
     setBloqueioLoteModal, setBloqueioModal, desbloquear,
-    setItemParaConcluir, setItemParaCancelar,
+    setItemParaConcluir, setItemParaCancelar, setItemParaEditar,
 }) {
     return (
         <ScrollView contentContainerStyle={{ padding: 18 }} showsVerticalScrollIndicator indicatorStyle={dark ? 'white' : 'black'}>
@@ -53,9 +53,9 @@ export function AgendaScreen({
                 {(() => {
                     const doDia = lista.filter(i => normalizarData(i.horario_atendimento) === dataAgenda);
                     if (modoAgenda === 'timeline') {
-                    return <LinhaDeTempo agendamentos={doDia} bloqueios={bloqueiosDoDia} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} dataSelecionada={dataAgenda} horaInicio={horaInicio} horaFim={horaFim} onBloquear={h => setBloqueioModal({ hora: h })} onDesbloquear={desbloquear} />;
+                    return <LinhaDeTempo agendamentos={doDia} bloqueios={bloqueiosDoDia} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} editar={setItemParaEditar} formatarData={formatarData} dataSelecionada={dataAgenda} horaInicio={horaInicio} horaFim={horaFim} onBloquear={h => setBloqueioModal({ hora: h })} onDesbloquear={desbloquear} />;
                     }
-                    return doDia.length === 0 ? <EstadoVazio T={T} mensagem={`Nenhum agendamento para ${dataAgenda}`} /> : doDia.map(item => <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} />);
+                    return doDia.length === 0 ? <EstadoVazio T={T} mensagem={`Nenhum agendamento para ${dataAgenda}`} /> : doDia.map(item => <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} editar={setItemParaEditar} formatarData={formatarData} />);
                 })()}
                 </View>
             ) : <EstadoVazio T={T} mensagem="Selecione uma data no calendário para ver os agendamentos." />}

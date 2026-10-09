@@ -12,7 +12,7 @@ import { DARK, LIGHT } from './src/theme';
 
 import { supabase } from './src/services/supabase';
 import { buscarConflito } from './src/services/agenda';
-import { gravarAgendamento } from './src/services/agendamentos';
+import { gravarAgendamento, atualizarAgendamento } from './src/services/agendamentos';
 import { concluirProcedimento, removerProcedimento, inserirBloqueios } from './src/services/procedimentos';
 
 //------------------UTILS-------------------//
@@ -72,6 +72,7 @@ export default function App() {
   const [focused, setFocused] = useState('');
 
   const [itemParaCancelar, setItemParaCancelar]   = useState(null);
+  const [itemParaEditar, setItemParaEditar]       = useState(null);
   const [itemParaConcluir, setItemParaConcluir]   = useState(null);
   const [reagendandoItem, setReagendandoItem]     = useState(null);
   const [modoAgenda, setModoAgenda]               = useState('timeline');
@@ -268,6 +269,21 @@ export default function App() {
     setReagendandoItem(null);
     buscar();
   }
+  async function confirmarEdicao(dados) {
+    if (!itemParaEditar) return;
+    const conflito = await buscarConflito(dados.horario_atendimento);
+    if (conflito?.erro) { alert('Não foi possível verificar a disponibilidade. Tente novamente.'); return; }
+    if (conflito && conflito.id !== itemParaEditar.id) {
+      alert(conflito.status === 'bloqueado'
+        ? 'Este horário está bloqueado.'
+        : `Já existe um agendamento neste horário (${conflito.nome_pessoa}).`);
+      return;
+    }
+    const r = await atualizarAgendamento(supabase, itemParaEditar.id, dados);
+    if (!r.ok) { alert('Não foi possível salvar as alterações: ' + r.erro); return; }
+    setItemParaEditar(null);
+    buscar();
+  }
   async function confirmarBloqueio(motivo) {
     if (!bloqueioModal || !dataAgenda) return;
     const horaStr = String(bloqueioModal.hora).padStart(2, '0');
@@ -350,10 +366,9 @@ export default function App() {
 
       <ConcluirModal visible={!!itemParaConcluir} item={itemParaConcluir} T={T} onConfirm={confirmarConclusao} onCancel={() => setItemParaConcluir(null)} />
       <ConfirmModal  visible={!!itemParaCancelar} item={itemParaCancelar} T={T} onConfirm={confirmarCancelamento} onCancel={() => setItemParaCancelar(null)} onReagendar={iniciarReagendamento} />
-      <EditModal visible={!!reagendandoItem} item={null} dadosCliente={reagendandoItem} T={T}
-      dataInicial={dataAgenda || dataHome || dataLocal()}
+      <EditModal visible={!!itemParaEditar} item={itemParaEditar} dadosCliente={null} T={T}
       lista={lista} bloqueios={bloqueios} horaInicio={horaInicio} horaFim={horaFim} intervalo={intervalo}
-      onSalvar={confirmarReagendamento} onFechar={() => setReagendandoItem(null)} />
+      onSalvar={confirmarEdicao} onFechar={() => setItemParaEditar(null)} />
       <BloqueioModal visible={!!bloqueioModal} hora={bloqueioModal?.hora} data={dataAgenda} T={T} onConfirm={confirmarBloqueio} onCancel={() => setBloqueioModal(null)} />
       <BloqueioLoteModal visible={bloqueioLoteModal} T={T} onFechar={() => setBloqueioLoteModal(false)} onConfirmar={confirmarBloqueioLote} />
 
@@ -383,7 +398,8 @@ export default function App() {
         <HomeScreen T={T} dark={dark} lista={lista} bloqueios={bloqueios} agendaHome={agendaHome}
           dataHome={dataHome} setDataHome={setDataHome}
           form={form} intervalo={intervalo} horaInicio={horaInicio} horaFim={horaFim} salvar={salvar}
-          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar} />
+          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
+          setItemParaEditar={setItemParaEditar} />
       )}
 
       {tela === 'agenda' && (
@@ -393,7 +409,8 @@ export default function App() {
           modoAgenda={modoAgenda} setModoAgenda={setModoAgenda}
           setBloqueioLoteModal={setBloqueioLoteModal} setBloqueioModal={setBloqueioModal}
           desbloquear={desbloquear}
-          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar} />
+          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
+          setItemParaEditar={setItemParaEditar} />
       )}
 
       {tela === 'clientes' && (

@@ -20,7 +20,7 @@ import { gerarSlots, calcularDesabilitados } from '../utils/slots';
 
 export function HomeScreen({
   T, dark, lista, bloqueios, agendaHome, dataHome, setDataHome,
-  form, intervalo, horaInicio, horaFim, salvar, setItemParaConcluir, setItemParaCancelar,
+  form, intervalo, horaInicio, horaFim, salvar, setItemParaConcluir, setItemParaCancelar,setItemParaEditar ,
 }) {
   const {
     nome, setNome, corte, setCorte, procedimento, setProcedimento,
@@ -100,7 +100,7 @@ export function HomeScreen({
         {lista.length === 0
           ? <EstadoVazio T={T} mensagem="Nenhum agendamento pendente ainda." />
           : lista.map(item => (
-              <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} formatarData={formatarData} />
+              <AppointmentCard key={item.id} item={item} T={T} dark={dark} concluir={setItemParaConcluir} cancelar={setItemParaCancelar} editar={setItemParaEditar} formatarData={formatarData} />
             ))}
       </View>
     </ScrollView>

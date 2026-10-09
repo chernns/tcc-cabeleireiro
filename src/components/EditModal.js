@@ -1,18 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-//---------------components------------------//
-
 import { CalendarioCustom } from './CalendarioCustom';
 import { SeletorOpcoes, OPCOES_CORTE } from './SeletorOpcoes';
 import { SeletorHorario } from './SeletorHorario';
-
-//-----------------utils-----------------//
-
 import { normalizarHorario } from '../utils/horario';
-import { gerarSlots, calcularDesabilitados } from '../utils/slots';
-
+import { gerarSlots, calcularDesabilitados, horaDeRegistro } from '../utils/slots';
 
 export function EditModal({
   visible, item, dadosCliente, T, onSalvar, onFechar, dataInicial = '',
@@ -24,9 +17,11 @@ export function EditModal({
   const [mostrarCal, setMostrarCal] = useState(false);
   const isReagendar = !item && !!dataInicial;
 
-  // Horários disponíveis na data escolhida (o agendamento sendo reagendado não ocupa o próprio horário)
+  // Horários disponíveis na data escolhida (o agendamento editado não ocupa o próprio horário)
   const ignorarId = (item || dadosCliente)?.id ?? null;
-  const slots = gerarSlots(horaInicio, horaFim, intervalo);
+  const horaOriginal = item ? horaDeRegistro(item.horario_atendimento) : '';
+  const slotsBase = gerarSlots(horaInicio, horaFim, intervalo);
+  const slots = horaOriginal && !slotsBase.includes(horaOriginal) ? [...slotsBase, horaOriginal].sort() : slotsBase;
   const desabilitados = calcularDesabilitados({ slots, data: dataEdit, lista, bloqueios, ignorarId });
 
   useEffect(() => {
@@ -36,8 +31,7 @@ export function EditModal({
     setValor(item.valor ? String(item.valor) : '');
     setCorte(item.tipo_corte ? String(item.tipo_corte) : '');
     setProcedimento(item.nome_procedimento ? String(item.nome_procedimento) : '');
-    const dt = item.horario_atendimento ? new Date(item.horario_atendimento) : new Date();
-    setHorario(`${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`);
+    setHorario(horaDeRegistro(item.horario_atendimento));
     const raw = item.horario_atendimento || '';
     setDataEdit(raw.split('T')[0].split(' ')[0] || dataInicial);
     setMostrarCal(false);
