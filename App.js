@@ -13,11 +13,13 @@ import { DARK, LIGHT } from './src/theme';
 import { supabase } from './src/services/supabase';
 import { buscarConflito } from './src/services/agenda';
 import { gravarAgendamento } from './src/services/agendamentos';
+import { concluirProcedimento, removerProcedimento, inserirBloqueios } from './src/services/procedimentos';
 
 //------------------UTILS-------------------//
 
 import { trimestreAtual, labelTrimestre, limitesTrimestre } from './src/utils/trimestre';
-import { normalizarData, dataLocal, limitesMes } from './src/utils/datas';
+import { normalizarData, dataLocal, limitesMes, proximoDia } from './src/utils/datas';
+import { separarDatasBloqueio } from './src/utils/bloqueio';
 import { normalizarHorario } from './src/utils/horario';
 import { agruparServicos } from './src/utils/servicos';
 
@@ -239,13 +241,18 @@ export default function App() {
 
   async function confirmarConclusao() {
     if (!itemParaConcluir) return;
-    await supabase.from('Procedimentos').update({ status: 'concluido' }).eq('id', itemParaConcluir.id);
-    setItemParaConcluir(null); buscar();
+    const r = await concluirProcedimento(supabase, itemParaConcluir.id);
+    if (!r.ok) { alert('Não foi possível concluir o atendimento: ' + r.erro); return; }
+    setItemParaConcluir(null);
+    buscar();
   }
+
   async function confirmarCancelamento() {
     if (!itemParaCancelar) return;
-    await supabase.from('Procedimentos').delete().eq('id', itemParaCancelar.id);
-    setItemParaCancelar(null); buscar();
+    const r = await removerProcedimento(supabase, itemParaCancelar.id);
+    if (!r.ok) { alert('Não foi possível cancelar o agendamento: ' + r.erro); return; }
+    setItemParaCancelar(null);
+    buscar();
   }
   function iniciarReagendamento() {
     const item = itemParaCancelar; setItemParaCancelar(null);
@@ -253,8 +260,11 @@ export default function App() {
   }
   async function confirmarReagendamento(dados) {
     const ok = await salvar(dados, reagendandoItem?.id);
-    if (!ok) return; // algo falhou: o original continua existindo
-    if (reagendandoItem) await supabase.from('Procedimentos').delete().eq('id', reagendandoItem.id);
+    if (!ok) return;
+    if (reagendandoItem) {
+      const r = await removerProcedimento(supabase, reagendandoItem.id);
+      if (!r.ok) alert('O novo horário foi salvo, mas não foi possível remover o antigo: ' + r.erro);
+    }
     setReagendandoItem(null);
     buscar();
   }
@@ -270,19 +280,47 @@ export default function App() {
   }
   async function desbloquear(item) {
     if (!item) return;
+    const r = await removerProcedimento(supabase, item.id);
+    if (!r.ok) { alert('Não foi possível desbloquear o horário: ' + r.erro); return; }
     setBloqueios(prev => prev.filter(b => b.id !== item.id));
-    await supabase.from('Procedimentos').delete().eq('id', item.id);
   }
   async function confirmarBloqueioLote({ hora, motivo, datas }) {
     const horaStr   = String(hora).padStart(2, '0');
-    const registros = datas.map(data => ({ nome_pessoa: 'Bloqueado', nome_procedimento: motivo || null, horario_atendimento: `${data}T${horaStr}:00:00`, status: 'bloqueado' }));
-    const LOTE = 50;
-    for (let i = 0; i < registros.length; i += LOTE) {
-      const { error } = await supabase.from('Procedimentos').insert(registros.slice(i, i + LOTE));
-      if (error) { alert('Erro ao bloquear em lote: ' + error.message); return; }
+    const ordenadas = [...datas].sort();
+
+    // Busca o que já existe no período para não bloquear sobre atendimentos
+    const { data: existentes, error } = await supabase
+      .from('Procedimentos')
+      .select('status, horario_atendimento')
+      .in('status', ['pendente', 'bloqueado'])
+      .gte('horario_atendimento', ordenadas[0])
+      .lt('horario_atendimento', proximoDia(ordenadas[ordenadas.length - 1]));
+    if (error) { alert('Não foi possível verificar os horários: ' + error.message); return; }
+
+    const { livres, ignoradas } = separarDatasBloqueio(ordenadas, hora, existentes);
+    if (livres.length === 0) {
+      alert(`Nenhum dia foi bloqueado: todos já têm atendimento ou bloqueio às ${horaStr}:00.`);
+      return;
     }
+
+    const registros = livres.map(data => ({
+      nome_pessoa: 'Bloqueado', nome_procedimento: motivo || null,
+      horario_atendimento: `${data}T${horaStr}:00:00`, status: 'bloqueado',
+    }));
+    const r = await inserirBloqueios(supabase, registros);
+    if (!r.ok) {
+      alert('Erro ao bloquear em lote: ' + r.erro + '\nAlguns dias podem ter sido bloqueados. Repita a operação: dias já bloqueados são ignorados.');
+      await buscar();
+      return;
+    }
+
     setBloqueioLoteModal(false);
-    alert(`✅ ${datas.length} dia${datas.length !== 1 ? 's' : ''} bloqueado${datas.length !== 1 ? 's' : ''} às ${horaStr}:00!`);
+    let msg = `✅ ${livres.length} dia${livres.length !== 1 ? 's' : ''} bloqueado${livres.length !== 1 ? 's' : ''} às ${horaStr}:00.`;
+    if (ignoradas.length > 0) {
+      const lista5 = ignoradas.slice(0, 5).join(', ') + (ignoradas.length > 5 ? '…' : '');
+      msg += `\n${ignoradas.length} ignorado${ignoradas.length !== 1 ? 's' : ''} (já tinham atendimento ou bloqueio): ${lista5}`;
+    }
+    alert(msg);
     await buscar();
   }
 
