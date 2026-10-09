@@ -8,8 +8,9 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 - Horários escolhidos por botões, gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos); horários ocupados, bloqueados ou já passados ficam indisponíveis
 - Bloqueio de conflitos (horário já ocupado ou bloqueado)
 - Agenda com visualização em linha do tempo ou lista
-- Bloqueio de horários, individual ou em lote (vários dias)
-- Concluir, cancelar e reagendar atendimentos
+- Bloqueio de horários, individual ou em lote (vários dias); o lote ignora dias que já têm atendimento ou bloqueio e informa quais foram ignorados
+- Concluir, editar, cancelar e reagendar atendimentos, com aviso de erro quando a operação não é gravada
+- Atualização em tempo real (Supabase Realtime): mudanças no banco aparecem no app sem precisar recarregar
 - Cadastro automático de clientes a partir dos atendimentos, com envio de lembrete por WhatsApp
 - Relatórios financeiros (gráfico de receita, serviços mais populares, relatórios mensal e trimestral)
 - Modo claro e escuro, horário de funcionamento e mensagem de lembrete configuráveis
@@ -39,7 +40,11 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 
 ### Banco de dados
 
-O app usa três tabelas no Supabase: `Procedimentos`, `Relatorios` e `Relatorio_Tri`. É necessário habilitar o RLS e criar políticas de acesso para o papel `anon` (veja "Limitações conhecidas").
+O app usa três tabelas no Supabase: `Procedimentos`, `Relatorios` e `Relatorio_Tri`. É necessário habilitar o RLS e criar políticas de acesso para o papel `anon` (veja "Limitações conhecidas") e incluir a tabela `Procedimentos` na publicação do Realtime:
+
+```sql
+alter publication supabase_realtime add table "Procedimentos";
+```
 
 ## Como testar
 
@@ -47,7 +52,7 @@ O app usa três tabelas no Supabase: `Procedimentos`, `Relatorios` e `Relatorio_
 npm test
 ```
 
-Os testes automatizados (10 suites) cobrem as funções puras em `src/utils/` (horário, datas, trimestres, formatação, agrupamento de serviços, conversões, geração de horários, conflitos e horários indisponíveis) e a gravação de agendamentos, com o banco simulado. Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
+Os testes automatizados (13 suites) cobrem as funções puras em `src/utils/` (horário, datas e limites de período, trimestres, formatação, agrupamento de serviços, conversões, geração de horários, conflitos, horários indisponíveis e bloqueio em lote) e as operações de gravação em `src/services/` (agendar, editar, concluir, remover e bloquear), com o banco simulado. Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
 
 ## Estrutura do projeto
 
@@ -56,7 +61,7 @@ App.js                estado, lógica de banco, navbar e modais
 src/
   components/         calendário, modais, cards e demais componentes
   screens/            Home, Agenda, Clientes, Relatório, Config
-  services/           cliente Supabase e consulta de conflitos
+  services/           cliente Supabase, consulta de conflitos e operações de gravação
   utils/              horário, datas, trimestre, formatadores, serviços, conversões, slots, conflito
   theme.js            temas claro e escuro
   constants.js
@@ -66,16 +71,15 @@ docs/                 documentação de testes
 
 ## Qualidade e testes
 
-Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar, agendamentos duplicados, falha silenciosa ao gravar campos opcionais vazios e um defeito visual no calendário.
+Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar, agendamentos duplicados, falha silenciosa ao gravar campos opcionais vazios, limites de período dos relatórios errados por causa do fuso horário, operações que fingiam sucesso quando o banco falhava, bloqueio em lote sobre atendimentos já agendados e um defeito visual no calendário.
 
 ## Limitações conhecidas
 
 - **Sem autenticação.** As políticas RLS liberam acesso total ao papel `anon`, e o linter do Supabase aponta isso como aviso. Melhoria futura: Supabase Auth com políticas por usuário.
 - **`horario_atendimento` é texto** (`varchar`) e existem dois formatos (`2026-10-07 10:00` e `2026-10-07T10:00:00`). Melhoria futura: migrar para `timestamp`.
 - **`telefone` é `bigint`**, o que descarta zeros à esquerda. Melhoria futura: usar `text`.
-- **Atualização por polling** a cada 5 segundos. Melhoria futura: Supabase Realtime.
+- **Realtime depende da publicação** `supabase_realtime`; se a conexão com o canal cair, o app se atualiza ao voltar para o primeiro plano e a cada 60 segundos.
 - **Sem duração de atendimento:** cada agendamento ocupa apenas o seu horário na grade definida pelo intervalo configurado, e um atendimento longo não impede agendar nos horários seguintes. Bloqueios, por outro lado, valem para a hora inteira.
-- Os intervalos de relatório usam `toISOString()` (UTC) contra uma coluna de texto, o que pode deixar atendimentos noturnos do último dia do período fora do total.
 
 ## Autor
 

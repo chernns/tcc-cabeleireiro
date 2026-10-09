@@ -22,6 +22,9 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 | BUG-07 | Agendamento sem telefone (ou sem valor) parece salvo, mas não grava no banco | Tratamento de erro / tipos | Alta | 🐞 Corrigido |
 | BUG-08 | Calendário exibe células fora do mês como selecionadas quando nenhuma data foi escolhida | Interface | Baixa | 🐞 Corrigido |
 | BUG-09 | Erro `Property 'error' doesn't exist` ao agendar (regressão) | Regressão | Alta | 🐞 Corrigido |
+| BUG-10 | Relatórios com limites de período errados por comparação de texto local com data em UTC | Datas / fuso horário | Alta | 🐞 Corrigido |
+| BUG-11 | Concluir, cancelar e desbloquear fingem sucesso quando o banco falha | Tratamento de erro | Alta | 🐞 Corrigido |
+| BUG-12 | Bloqueio em lote criava bloqueio sobre horários com atendimento já agendado | Regra de negócio | Alta | 🐞 Corrigido |
 | SEC-01 | Chave do Supabase e URL escritas no código-fonte | Segurança | Alta | 🐞 Corrigido |
 | SEC-02 | Políticas RLS liberam tudo ao papel `anon` (12 avisos do linter) | Segurança | Média | ⚠️ Limitação (app sem login) |
 
@@ -109,6 +112,33 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 - **Causa:** ao extrair a gravação para `gravarAgendamento`, o bloco que declarava `const { error }` foi removido de `salvar`, mas o `if (error)` logo abaixo permaneceu, referenciando uma variável que não existia mais.
 - **Correção:** `salvar` reescrita usando apenas o retorno de `gravarAgendamento`.
 - **Lição:** a regressão apareceu porque `salvar` ainda não tem teste automatizado de integração. Fica como melhoria futura.
+
+### BUG-10: limites de período dos relatórios errados (fuso horário)
+
+- **Passos:** inserir atendimentos concluídos no primeiro dia do mês, no último dia, no primeiro dia do mês seguinte e no último dia do mês anterior; comparar o total do relatório mensal com o total calculado no banco.
+- **Esperado:** o total do mês inclui o primeiro e o último dia e exclui os dias dos meses vizinhos.
+- **Obtido (antes):** atendimentos do primeiro dia do mês ficavam de fora e atendimentos do primeiro dia do mês seguinte entravam no total.
+- **Causa:** a coluna `horario_atendimento` é texto (`2026-10-01 10:00`), mas o período era montado com `toISOString()`, que converte para UTC (`2026-10-01T03:00:00.000Z` no fuso do Brasil). Na comparação de textos, o espaço vem antes do `T`, o que desloca os limites do mês.
+- **Correção:** os limites passaram a ser datas locais em texto, com início inclusivo e fim exclusivo (`>= 2026-10-01` e `< 2026-11-01`), criadas pelas funções `dataLocal`, `limitesMes` e `limitesTrimestre`. A data padrão do reagendamento deixou de usar `toISOString()` e a marcação dos dias com agendamento no calendário passou a usar `normalizarData`.
+- **Verificação:** com os dados de teste (R$ 100, 200, 400 e 800 nos quatro cenários acima), o relatório de outubro mostrou o mesmo total da consulta SQL (R$ 300). Regressões cobertas por `datas.test.js` e `trimestre.test.js`.
+
+### BUG-11: concluir, cancelar e desbloquear sem tratamento de erro
+
+- **Passos:** com a conexão desligada (modo avião), concluir um atendimento, cancelar um agendamento e desbloquear um horário.
+- **Esperado:** alerta de erro e estado preservado.
+- **Obtido (antes):** o app seguia como se tivesse funcionado (fechava o modal, removia o bloqueio da tela), sem que o banco tivesse sido alterado.
+- **Causa:** as chamadas ao Supabase não verificavam o campo `error` do retorno (mesmo padrão do BUG-07).
+- **Correção:** novas funções em `src/services/procedimentos.js` (`concluirProcedimento`, `removerProcedimento`, `inserirBloqueios`) devolvem sucesso ou falha, e o app só atualiza a tela quando a operação foi gravada. No reagendamento, uma falha ao remover o horário antigo é informada ao usuário.
+- **Verificação:** casos da seção 3.9 e testes automatizados com banco simulado (`procedimentos.test.js`).
+
+### BUG-12: bloqueio em lote sobre atendimentos agendados
+
+- **Passos:** agendar um cliente às 14:00 em um dia; bloquear 14:00 em vários dias (por exemplo "Este mês").
+- **Esperado:** o dia com o atendimento não é bloqueado e o usuário é avisado.
+- **Obtido (antes):** o bloqueio era criado mesmo assim, e o atendimento ficava dentro de um horário bloqueado.
+- **Causa:** `confirmarBloqueioLote` inseria os bloqueios sem consultar os registros existentes.
+- **Correção:** o app busca agendamentos e bloqueios do período, separa as datas livres das ocupadas (`separarDatasBloqueio`, em `src/utils/bloqueio.js`), bloqueia só as livres e informa quantos dias e quais foram ignorados.
+- **Verificação:** casos da seção 3.10 e `bloqueio.test.js`.
 
 ### SEC-01: credenciais no código
 
@@ -218,7 +248,70 @@ Os casos automatizados validam a lógica de conversão e o tratamento de erro; a
 | 21 | Cancelar e Reagendar | Modal sem campo de duração; reagendamento funciona | ✅ |
 | 22 | Banco após agendar | `carga_horaria` nulo no novo registro | ✅ |
 | 23 | Busca por `duracao` e `setDuracao` no código | Nenhuma referência restante | ✅ |
-| 24 | `npm test` após a remoção | 10 suites passando | ✅ |
+| 24 | `npm test` após a remoção | Todas as suites passando | ✅ |
+
+### 3.8 Limites de período dos relatórios (BUG-10)
+
+Dados inseridos por SQL (o app não permite criar atendimentos no passado), todos com status `concluido`:
+
+| Data e hora | Valor | Deve entrar no mês de outubro? |
+|---|---|---|
+| 2026-09-30 22:00 | R$ 800 | Não |
+| 2026-10-01 10:00 | R$ 100 | Sim |
+| 2026-10-31 23:00 | R$ 200 | Sim |
+| 2026-11-01 10:00 | R$ 400 | Não |
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Relatório mensal de outubro | R$ 300, igual à consulta SQL com `>= '2026-10-01' and < '2026-11-01'` | ✅ |
+| 2 | Limites de mês e trimestre (incluindo virada de ano e fevereiro bissexto) | Início inclusivo e fim exclusivo corretos | ✅ Automatizado (`datas.test.js` e `trimestre.test.js`) |
+
+### 3.9 Falhas de conexão ao concluir, cancelar e desbloquear (BUG-11)
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Modo avião: concluir um atendimento | Alerta de erro; o modal continua e o atendimento continua pendente | ✅ |
+| 2 | Modo avião: cancelar ("Só Cancelar") | Alerta de erro; o agendamento continua existindo | ✅ |
+| 3 | Modo avião: desbloquear um horário | Alerta de erro; o bloqueio continua na timeline | ✅ |
+| 4 | Com internet: concluir, cancelar e desbloquear | Funcionam normalmente | ✅ |
+| 5 | Falha do banco em cada operação | Devolve erro em vez de fingir sucesso | ✅ Automatizado (`procedimentos.test.js`) |
+
+### 3.10 Bloqueio em lote (BUG-12)
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Cliente agendado às 14:00 em um dia; bloquear 14:00 em "Este mês" | Mensagem de sucesso, com o dia do agendamento listado como ignorado | ✅ |
+| 2 | Conferir o dia ignorado na timeline | Sem bloqueio sobre o cliente | ✅ |
+| 3 | Repetir o mesmo bloqueio em lote | "Nenhum dia foi bloqueado: todos já têm atendimento ou bloqueio" | ✅ |
+| 4 | Lógica de separação de datas (hora cheia, formatos com espaço e com `T`, concluídos, listas vazias) | Datas livres e ignoradas corretas | ✅ Automatizado (`bloqueio.test.js`) |
+| 5 | Inserção em lotes de 50, parando no primeiro erro | Lotes de 50, 50 e 20 para 120 registros | ✅ Automatizado (`procedimentos.test.js`) |
+
+### 3.11 Edição de agendamentos
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Home e Agenda (linha e lista): cada agendamento | Botões Concluir, Editar e Cancelar visíveis na mesma linha | ✅ |
+| 2 | Editar: abrir o modal | Nome, tipo de corte, procedimento, telefone e valor preenchidos; data e horário marcados | ✅ |
+| 3 | Mudar só o nome e salvar | Nome muda; horário e status continuam iguais | ✅ |
+| 4 | Mudar o horário para um livre | Agendamento muda de lugar na agenda | ✅ |
+| 5 | Horário ocupado ou bloqueado | Botão desabilitado | ✅ |
+| 6 | Manter o próprio horário | Continua selecionável e salva | ✅ |
+| 7 | Limpar o telefone e salvar | Salva; `telefone` nulo no banco | ✅ |
+| 8 | Editar em modo avião | Alerta de erro; nada muda | ✅ |
+| 9 | Editar agendamento criado com outro intervalo (por exemplo 14:20) | Horário original aparece como botão extra | ✅ |
+| 10 | Atualização de dados no banco | Só os campos editados mudam; status não é alterado; telefone e valor convertidos | ✅ Automatizado (`edicao.test.js`) |
+
+### 3.12 Atualização em tempo real (Supabase Realtime)
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Inserir um agendamento direto no Table Editor do Supabase, com o app aberto | Aparece na Home em cerca de 1 segundo | ✅ |
+| 2 | Apagar ou editar uma linha pelo painel | O app reflete a mudança | ✅ |
+| 3 | Concluir um atendimento no app | Total do relatório atualiza | ✅ |
+| 4 | Bloqueio em lote de um mês | A tela atualiza uma vez só, sem travar | ✅ |
+| 5 | Minimizar o app, alterar algo pelo painel e voltar | Dados atualizados ao voltar | ✅ |
+| 6 | Desligar o Wi-Fi e religar | Volta a atualizar em até 1 minuto | ✅ |
+| 7 | Terminal do Expo | Sem mensagens `Realtime: CHANNEL_ERROR` | ✅ |
 
 ---
 
@@ -238,6 +331,14 @@ A lógica está em `src/utils/conflito.js` (`encontrarConflito`) e é coberta po
 - **Tipo de corte:** campo de texto livre substituído por seleção entre opções fixas (Masculino e Feminino), reduzindo variações de digitação.
 - **Horário:** campo de texto `HH:MM` substituído por botões gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos). A lógica está em `src/utils/slots.js` (`gerarSlots`, `calcularDesabilitados`).
 - **Duração:** campo removido da Home e do reagendamento, por ser desnecessário (nenhuma regra dependia dele; conflitos e horários usam apenas o intervalo da Config). A coluna `carga_horaria` foi mantida no banco para preservar o histórico: novos agendamentos gravam valor nulo e os antigos conservam o valor que tinham.
+
+### 4.3 Edição de agendamentos
+
+Os agendamentos pendentes passaram a ter o botão "Editar" (Home, Agenda em linha e em lista), que abre o mesmo modal do reagendamento com os dados preenchidos. A edição altera o registro existente (`atualizarAgendamento`), sem cancelar e recriar, e verifica conflito de horário ignorando o próprio agendamento.
+
+### 4.4 Atualização por Realtime no lugar de polling
+
+A consulta ao banco a cada 5 segundos foi substituída pelo Supabase Realtime: o app é avisado quando a tabela `Procedimentos` muda e atualiza em seguida (com agrupamento de eventos de 400 ms). Como reforço, atualiza ao voltar para o app e a cada 60 segundos. Requer que a tabela esteja na publicação `supabase_realtime`.
 
 ---
 
@@ -260,6 +361,14 @@ where status = 'concluido' and (valor is null or valor = 0);
 -- Valores de tipo de corte em uso
 select tipo_corte, count(*) from "Procedimentos" group by tipo_corte;
 
+-- Total do mês, para comparar com o relatório do app (BUG-10)
+select sum(valor) from "Procedimentos"
+where status = 'concluido'
+  and horario_atendimento >= '2026-10-01' and horario_atendimento < '2026-11-01';
+
+-- Tabelas publicadas no Realtime
+select tablename from pg_publication_tables where pubname = 'supabase_realtime';
+
 -- Serviços agrupados (referência para o relatório do app)
 select lower(translate(regexp_replace(trim(nome_procedimento), '\s+', ' ', 'g'),
          'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ',
@@ -276,20 +385,23 @@ group by 1 order by qtd desc;
 
 ## 6. Testes automatizados (Jest)
 
-Executar com `npm test`. Última execução: 10 suites passando.
+Executar com `npm test`. Última execução: 13 suites passando.
 
 | Arquivo | Cobre | Pontos principais |
 |---|---|---|
 | `horario.test.js` | `normalizarHorario` | zero à esquerda, limites 00:00 e 23:59, espaços, 24:00, 12:60, texto, vazio e nulo |
 | `formatadores.test.js` | `formatarContagem` | "Agora!", minutos e segundos, horas, arredondamento de milissegundos |
-| `datas.test.js` | `formatarData`, `normalizarData` | formatos com espaço e com `T`, valores vazios |
-| `trimestre.test.js` | `trimestreAtual`, `labelTrimestre`, `rangeTrimestrre` | todos os meses, início e fim dos trimestres, relógio simulado |
+| `datas.test.js` | `formatarData`, `normalizarData`, `dataLocal`, `proximoDia`, `limitesMes` | formatos com espaço e com `T`, dia local à noite, virada de mês e de ano, fevereiro bissexto, regressão dos limites do mês |
+| `trimestre.test.js` | `trimestreAtual`, `labelTrimestre`, `limitesTrimestre` | todos os meses, limites dos quatro trimestres, regressão do primeiro dia do período, relógio simulado |
 | `servicos.test.js` | `agruparServicos` | caso do `degrade`, receita só de concluídos, espaços, nulos, ordenação, limite |
 | `conversoes.test.js` | `telefoneParaNumero`, `valorParaNumero` | máscara, vírgula, "R$", separador de milhar, vazio, nulo e texto |
 | `agendamentos.test.js` | `gravarAgendamento` | telefone e valor nulos, conversões, status pendente, falha do banco (cliente simulado) |
 | `slots.test.js` | `gerarSlots`, `horaDeRegistro` | intervalos de 30, 45 e 60 min, intervalo inválido, formatos de data com espaço e com `T` |
 | `conflito.test.js` | `encontrarConflito` | horário exato, bloqueio por hora inteira, horas com e sem zero, listas vazias |
 | `desabilitados.test.js` | `calcularDesabilitados` | ocupados, bloqueios, `ignorarId` no reagendamento, horários passados de hoje, outras datas |
+| `bloqueio.test.js` | `separarDatasBloqueio` | dia com agendamento ignorado, bloqueio existente, concluído não impede, hora sem zero, todas ocupadas |
+| `procedimentos.test.js` | `concluirProcedimento`, `removerProcedimento`, `inserirBloqueios` | registro certo, erro do banco devolvido, lotes de 50, parada no primeiro erro, lista vazia |
+| `edicao.test.js` | `atualizarAgendamento` | atualiza só o id informado, conversões, nulos, campos enviados, erro do banco |
 
 ---
 
@@ -299,6 +411,6 @@ Executar com `npm test`. Última execução: 10 suites passando.
 - Teste de integração para `salvar` (evitaria regressões como o BUG-09).
 - Se o salão passar a precisar de atendimentos com durações diferentes, reintroduzir a duração e considerá-la na regra de conflito (hoje cada agendamento ocupa apenas o seu horário).
 - Migrar `horario_atendimento` para `timestamp` e `telefone` para `text`.
-- Verificar o retorno de erro de todas as chamadas ao Supabase (concluir, cancelar, desbloquear ainda não tratam falhas).
+- Tratar também as falhas das consultas de leitura (`buscar` e os relatórios apenas registram o erro no console).
 - Autenticação com Supabase Auth e políticas RLS por usuário.
 - Pipeline de CI (GitHub Actions) rodando `npm test` a cada push.
