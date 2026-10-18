@@ -11,6 +11,7 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 - Bloqueio de horários, individual ou em lote (vários dias); o lote ignora dias que já têm atendimento ou bloqueio e informa quais foram ignorados
 - Concluir, editar, cancelar e reagendar atendimentos, com aviso de erro quando a operação não é gravada
 - Atualização em tempo real (Supabase Realtime): mudanças no banco aparecem no app sem precisar recarregar
+- Navegação por gesto: além do menu superior, dá para arrastar para o lado para trocar de tela
 - Cadastro automático de clientes a partir dos atendimentos, com envio de lembrete por WhatsApp
 - Relatórios financeiros (gráfico de receita, serviços mais populares, relatórios mensal e trimestral)
 - Modo claro e escuro, horário de funcionamento e mensagem de lembrete configuráveis
@@ -36,6 +37,10 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 4. Inicie o app e escaneie o QR code com o Expo Go:
    ```bash
    npx expo start -c
+   ```
+   Se o celular ficar parado em "Bundling" ou aparecer "Packager is not running" (redes que isolam os dispositivos ou firewall), use o túnel:
+   ```bash
+   npx expo start --tunnel -c
    ```
 
 ### Banco de dados
@@ -71,13 +76,14 @@ docs/                 documentação de testes
 
 ## Qualidade e testes
 
-Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar, agendamentos duplicados, falha silenciosa ao gravar campos opcionais vazios, limites de período dos relatórios errados por causa do fuso horário, operações que fingiam sucesso quando o banco falhava, bloqueio em lote sobre atendimentos já agendados e um defeito visual no calendário.
+Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos documentados com passos para reproduzir, causa e correção em [`docs/casos-de-teste.md`](docs/casos-de-teste.md). Entre eles: agrupamento de serviços sensível a maiúsculas e acentos, erro no envio por WhatsApp causado por incompatibilidade de tipo entre banco e app, validação de horário ausente, risco de perda de dados ao reagendar, agendamentos duplicados, falha silenciosa ao gravar campos opcionais vazios, limites de período dos relatórios errados por causa do fuso horário, operações que fingiam sucesso quando o banco falhava, bloqueio em lote sobre atendimentos já agendados, um defeito visual no calendário e regressões de navegação detectadas em teste.
 
 ## Limitações conhecidas
 
 - **Sem autenticação.** As políticas RLS liberam acesso total ao papel `anon`, e o linter do Supabase aponta isso como aviso. Melhoria futura: Supabase Auth com políticas por usuário.
 - **`horario_atendimento` é texto** (`varchar`) e existem dois formatos (`2026-10-07 10:00` e `2026-10-07T10:00:00`). Melhoria futura: migrar para `timestamp`.
 - **`telefone` é `bigint`**, o que descarta zeros à esquerda. Melhoria futura: usar `text`.
+- **Gesto sobre o calendário:** um arraste horizontal sobre o calendário troca de tela em vez de mudar o mês; para mudar de mês, use as setas.
 - **Realtime depende da publicação** `supabase_realtime`; se a conexão com o canal cair, o app se atualiza ao voltar para o primeiro plano e a cada 60 segundos.
 - **Sem duração de atendimento:** cada agendamento ocupa apenas o seu horário na grade definida pelo intervalo configurado, e um atendimento longo não impede agendar nos horários seguintes. Bloqueios, por outro lado, valem para a hora inteira.
 

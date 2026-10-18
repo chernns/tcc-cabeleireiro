@@ -25,6 +25,8 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 | BUG-10 | Relatórios com limites de período errados por comparação de texto local com data em UTC | Datas / fuso horário | Alta | 🐞 Corrigido |
 | BUG-11 | Concluir, cancelar e desbloquear fingem sucesso quando o banco falha | Tratamento de erro | Alta | 🐞 Corrigido |
 | BUG-12 | Bloqueio em lote criava bloqueio sobre horários com atendimento já agendado | Regra de negócio | Alta | 🐞 Corrigido |
+| BUG-13 | Erro `Cannot convert undefined value to object` ao trocar de tela (lista `TELAS` ausente) | Configuração / regressão | Média | 🐞 Corrigido |
+| BUG-14 | "Cancelar e Reagendar" não abria o modal de reagendamento (modal removido por engano) | Regressão | Alta | 🐞 Corrigido |
 | SEC-01 | Chave do Supabase e URL escritas no código-fonte | Segurança | Alta | 🐞 Corrigido |
 | SEC-02 | Políticas RLS liberam tudo ao papel `anon` (12 avisos do linter) | Segurança | Média | ⚠️ Limitação (app sem login) |
 
@@ -139,6 +141,26 @@ Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrad
 - **Causa:** `confirmarBloqueioLote` inseria os bloqueios sem consultar os registros existentes.
 - **Correção:** o app busca agendamentos e bloqueios do período, separa as datas livres das ocupadas (`separarDatasBloqueio`, em `src/utils/bloqueio.js`), bloqueia só as livres e informa quantos dias e quais foram ignorados.
 - **Verificação:** casos da seção 3.10 e `bloqueio.test.js`.
+
+### BUG-13: erro ao trocar de tela por gesto ou menu
+
+- **Passos:** com a navegação por páginas deslizáveis, arrastar de uma tela para outra ou tocar em uma aba do menu.
+- **Esperado:** a tela muda e o destaque do menu acompanha.
+- **Obtido (antes):** erro `Cannot convert undefined value to object` na linha do `onPageSelected`; o app abria normalmente e só falhava ao trocar de página.
+- **Causa:** o código importava a lista `TELAS` de `src/constants.js`, mas a exportação não existia no arquivo (passo não aplicado ou não salvo), então o acesso `TELAS[posição]` falhava.
+- **Correção:** exportar `TELAS` em `src/constants.js`, na mesma ordem do menu.
+- **Verificação:** casos da seção 3.13.
+- **Lição:** o erro só aparecia na interação, não ao abrir o app, o que reforça a necessidade de testar todos os fluxos de tela após mudanças de navegação.
+
+### BUG-14: reagendamento sem modal
+
+- **Passos:** cancelar um agendamento e tocar em "Cancelar e Reagendar".
+- **Esperado:** abre o modal de reagendamento.
+- **Obtido (antes):** o aviso de cancelamento fechava e nenhum modal abria.
+- **Causa:** ao reorganizar o `App.js` para incluir o modal de edição, o `EditModal` ligado a `reagendandoItem` foi removido; só restou o da edição. Identificado em revisão do código (a função `dataLocal` continuava importada sem uso).
+- **Correção:** restaurado o segundo `EditModal`, com `dadosCliente={reagendandoItem}` e `onSalvar={confirmarReagendamento}`.
+- **Verificação:** caso 3 da seção 3.13 e caso 17 da seção 3.7.
+- **Lição:** regressão de funcionalidade pré-existente causada por edição manual do arquivo principal; reforça a falta de testes de interface (seção 7).
 
 ### SEC-01: credenciais no código
 
@@ -313,6 +335,23 @@ Dados inseridos por SQL (o app não permite criar atendimentos no passado), todo
 | 6 | Desligar o Wi-Fi e religar | Volta a atualizar em até 1 minuto | ✅ |
 | 7 | Terminal do Expo | Sem mensagens `Realtime: CHANNEL_ERROR` | ✅ |
 
+### 3.13 Navegação por gesto entre telas
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Arrastar para a esquerda na Home | Vai para a Agenda e o destaque do menu acompanha, sem erro | ✅ |
+| 2 | Continuar arrastando até Config | Passa por Clientes e Relatório, na ordem do menu | ✅ |
+| 3 | Cancelar e Reagendar, depois do ajuste do BUG-14 | O modal de reagendamento abre | ✅ |
+| 4 | Arrastar para a direita | Volta pela mesma ordem | ✅ |
+| 5 | Tocar em uma aba do menu | Desliza até a tela e destaca a aba | ✅ |
+| 6 | Arrastar para fora na primeira e na última tela | Nada acontece (sem loop) | ✅ |
+| 7 | Rolar uma tela na vertical | Rolagem normal, sem trocar de tela | ✅ |
+| 8 | Preencher parte do formulário da Home, ir a outra tela e voltar | O que foi digitado continua | ✅ |
+| 9 | Digitar em um campo e arrastar | O teclado fecha e a tela troca | ✅ |
+| 10 | Abrir Relatório arrastando | Os relatórios carregam como ao tocar no menu | ✅ |
+| 11 | Usar modais (concluir, editar, bloquear em lote) | Funcionam; o gesto não troca a tela por baixo | ✅ |
+| 12 | Modo escuro | Sem faixas ou cores estranhas entre as telas | ✅ |
+
 ---
 
 ## 4. Mudanças de comportamento
@@ -339,6 +378,10 @@ Os agendamentos pendentes passaram a ter o botão "Editar" (Home, Agenda em linh
 ### 4.4 Atualização por Realtime no lugar de polling
 
 A consulta ao banco a cada 5 segundos foi substituída pelo Supabase Realtime: o app é avisado quando a tabela `Procedimentos` muda e atualiza em seguida (com agrupamento de eventos de 400 ms). Como reforço, atualiza ao voltar para o app e a cada 60 segundos. Requer que a tabela esteja na publicação `supabase_realtime`.
+
+### 4.5 Navegação por gesto
+
+As telas (Início, Agenda, Clientes, Relatório e Config) passaram a ficar em páginas deslizáveis (`react-native-pager-view`). É possível arrastar para o lado para trocar de tela, e o menu superior continua funcionando e acompanha a tela atual. Todas as telas ficam montadas, preservando o que foi digitado ao navegar. A ordem das telas está em `TELAS` (`src/constants.js`).
 
 ---
 
@@ -409,6 +452,7 @@ Executar com `npm test`. Última execução: 13 suites passando.
 
 - Testes de interface com React Native Testing Library (formulário da Home, modais, seletores).
 - Teste de integração para `salvar` (evitaria regressões como o BUG-09).
+- Teste automatizado da navegação e da abertura dos modais (teria detectado o BUG-14).
 - Se o salão passar a precisar de atendimentos com durações diferentes, reintroduzir a duração e considerá-la na regra de conflito (hoje cada agendamento ocupa apenas o seu horário).
 - Migrar `horario_atendimento` para `timestamp` e `telefone` para `text`.
 - Tratar também as falhas das consultas de leitura (`buscar` e os relatórios apenas registram o erro no console).
