@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar, Linki
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PagerView from 'react-native-pager-view';
 
 //-------------------RAIZ-------------------//
 
 import { DARK, LIGHT } from './src/theme';
+import { TELAS } from './src/constants';
 
 //-----------------SERVICES-------------------//
 
@@ -200,6 +202,13 @@ export default function App() {
     await gerarRelatorioTrimestralAuto();
   }
   atualizarRef.current = atualizarTudo;
+
+  const pagerRef = useRef(null);
+
+  function irParaTela(id) {
+    setTela(id);
+    pagerRef.current?.setPage(TELAS.indexOf(id));
+  }
 
   // Agrupa rajadas de eventos (ex.: bloqueio em lote) em uma única atualização
   function agendarAtualizacao() {
@@ -398,6 +407,10 @@ export default function App() {
       <EditModal visible={!!itemParaEditar} item={itemParaEditar} dadosCliente={null} T={T}
       lista={lista} bloqueios={bloqueios} horaInicio={horaInicio} horaFim={horaFim} intervalo={intervalo}
       onSalvar={confirmarEdicao} onFechar={() => setItemParaEditar(null)} />
+      <EditModal visible={!!reagendandoItem} item={null} dadosCliente={reagendandoItem} T={T}
+      dataInicial={dataAgenda || dataHome || dataLocal()}
+      lista={lista} bloqueios={bloqueios} horaInicio={horaInicio} horaFim={horaFim} intervalo={intervalo}
+      onSalvar={confirmarReagendamento} onFechar={() => setReagendandoItem(null)} />
       <BloqueioModal visible={!!bloqueioModal} hora={bloqueioModal?.hora} data={dataAgenda} T={T} onConfirm={confirmarBloqueio} onCancel={() => setBloqueioModal(null)} />
       <BloqueioLoteModal visible={bloqueioLoteModal} T={T} onFechar={() => setBloqueioLoteModal(false)} onConfirmar={confirmarBloqueioLote} />
 
@@ -412,7 +425,7 @@ export default function App() {
         ].map(tab => {
           const ativo = tela === tab.id;
           return (
-            <TouchableOpacity key={tab.id} onPress={() => setTela(tab.id)} style={{ alignItems: 'center', gap: 4, paddingHorizontal: 8 }}>
+            <TouchableOpacity key={tab.id} onPress={() => irParaTela(tab.id)} style={{ alignItems: 'center', gap: 4, paddingHorizontal: 8 }}>
               <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: ativo ? T.accentGlow : 'transparent', borderWidth: ativo ? 1 : 0, borderColor: ativo ? T.accentDim : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name={tab.icon} size={21} color={ativo ? T.accent : T.textSub} />
               </View>
@@ -422,47 +435,57 @@ export default function App() {
         })}
       </View>
 
-      {/* HOME */}
-      {tela === 'home' && (
-        <HomeScreen T={T} dark={dark} lista={lista} bloqueios={bloqueios} agendaHome={agendaHome}
-          dataHome={dataHome} setDataHome={setDataHome}
-          form={form} intervalo={intervalo} horaInicio={horaInicio} horaFim={horaFim} salvar={salvar}
-          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
-          setItemParaEditar={setItemParaEditar} />
-      )}
+      <PagerView
+      ref={pagerRef}
+      style={{ flex: 1 }}
+      initialPage={0}
+      keyboardDismissMode="on-drag"
+      onPageSelected={e => setTela(TELAS[e.nativeEvent.position])}
+      >
+        <View key="home" style={{ flex: 1 }}>
+          <HomeScreen T={T} dark={dark} lista={lista} bloqueios={bloqueios} agendaHome={agendaHome}
+            dataHome={dataHome} setDataHome={setDataHome}
+            form={form} intervalo={intervalo} horaInicio={horaInicio} horaFim={horaFim} salvar={salvar}
+            setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
+            setItemParaEditar={setItemParaEditar} 
+          />
+        </View>
 
-      {tela === 'agenda' && (
-        <AgendaScreen T={T} dark={dark} lista={lista} agendaAgenda={agendaAgenda}
-          dataAgenda={dataAgenda} setDataAgenda={setDataAgenda}
-          bloqueiosDoDia={bloqueiosDoDia} horaInicio={horaInicio} horaFim={horaFim}
-          modoAgenda={modoAgenda} setModoAgenda={setModoAgenda}
-          setBloqueioLoteModal={setBloqueioLoteModal} setBloqueioModal={setBloqueioModal}
-          desbloquear={desbloquear}
-          setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
-          setItemParaEditar={setItemParaEditar} />
-      )}
+        <View key="agenda" style={{ flex: 1 }}>
+          <AgendaScreen T={T} dark={dark} lista={lista} agendaAgenda={agendaAgenda}
+            dataAgenda={dataAgenda} setDataAgenda={setDataAgenda}
+            bloqueiosDoDia={bloqueiosDoDia} horaInicio={horaInicio} horaFim={horaFim}
+            modoAgenda={modoAgenda} setModoAgenda={setModoAgenda}
+            setBloqueioLoteModal={setBloqueioLoteModal} setBloqueioModal={setBloqueioModal}
+            desbloquear={desbloquear}
+            setItemParaConcluir={setItemParaConcluir} setItemParaCancelar={setItemParaCancelar}
+            setItemParaEditar={setItemParaEditar} 
+          />
+        </View>
 
-      {tela === 'clientes' && (
-        <ClientesScreen T={T} dark={dark} clientes={clientes} clientesFiltrados={clientesFiltrados}
-          buscaCliente={buscaCliente} setBuscaCliente={setBuscaCliente}
-          focusBusca={focusBusca} setFocusBusca={setFocusBusca} abrirWhatsApp={abrirWhatsApp} />
-      )}
+        <View key="clientes" style={{ flex: 1 }}>
+          <ClientesScreen T={T} dark={dark} clientes={clientes} clientesFiltrados={clientesFiltrados}
+            buscaCliente={buscaCliente} setBuscaCliente={setBuscaCliente}
+            focusBusca={focusBusca} setFocusBusca={setFocusBusca} abrirWhatsApp={abrirWhatsApp} 
+          />
+        </View>
 
-      {/* ── RELATÓRIO ── */}
-      {tela === 'relatorio' && (
-        <RelatorioScreen T={T} dark={dark} dadosGrafico={dadosGrafico} servicos={servicos}
-          abaRelatorio={abaRelatorio} setAbaRelatorio={setAbaRelatorio} buscarRelatorios={buscarRelatorios}
-          relatorios={relatorios} relatoriosTri={relatoriosTri} />
-      )}
+        <View key="relatorio" style={{ flex: 1 }}>
+          <RelatorioScreen T={T} dark={dark} dadosGrafico={dadosGrafico} servicos={servicos}
+            abaRelatorio={abaRelatorio} setAbaRelatorio={setAbaRelatorio} buscarRelatorios={buscarRelatorios}
+            relatorios={relatorios} relatoriosTri={relatoriosTri} 
+          />
+        </View>
 
-      {/* CONFIG */}
-      {tela === 'config' && (
-        <ConfigScreen T={T} dark={dark} setDark={setDark}
-          horaInicio={horaInicio} setHoraInicio={setHoraInicio}
-          horaFim={horaFim} setHoraFim={setHoraFim}
-          intervalo={intervalo} setIntervalo={setIntervalo}
-          msgLembrete={msgLembrete} setMsgLembrete={setMsgLembrete} />
-      )}
+        <View key="config" style={{ flex: 1 }}>
+          <ConfigScreen T={T} dark={dark} setDark={setDark}
+            horaInicio={horaInicio} setHoraInicio={setHoraInicio}
+            horaFim={horaFim} setHoraFim={setHoraFim}
+            intervalo={intervalo} setIntervalo={setIntervalo}
+            msgLembrete={msgLembrete} setMsgLembrete={setMsgLembrete} 
+          />
+        </View>
+      </PagerView>
     </View>
   );
 }
