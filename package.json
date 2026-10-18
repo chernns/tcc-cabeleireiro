@@ -20,7 +20,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "rapido": "expo start --tunnel -c --no-dev --minify"
   },
   "jest": {
     "preset": "jest-expo"

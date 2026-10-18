@@ -217,7 +217,7 @@ export default function App() {
   }
 
   // Refaz a busca quando muda data selecionada ou tema (as marcações do calendário dependem deles)
-  useEffect(() => { atualizarRef.current(); }, [dataHome, dataAgenda, dark]);
+  useEffect(() => { atualizarRef.current(); }, []);
 
   // Realtime + reforços: ao voltar para o app e uma verificação lenta caso a conexão tenha caído
   useEffect(() => {

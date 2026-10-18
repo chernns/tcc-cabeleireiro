@@ -43,6 +43,22 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
    npx expo start --tunnel -c
    ```
 
+### Desempenho no Expo Go
+
+No Expo Go, o modo de desenvolvimento (padrão) deixa o app visivelmente mais lento: ações simples, como trocar entre modo claro e escuro, chegaram a levar quase 2 segundos. Para medir o desempenho real, inicie sem o modo de desenvolvimento e com o código minificado:
+
+```bash
+npx expo start --tunnel -c --no-dev --minify
+```
+
+O projeto traz esse comando como atalho no `package.json`:
+
+```bash
+npm run rapido
+```
+
+Nesse modo o atraso é imperceptível. Em contrapartida, ele esconde as telas de erro e os avisos do React, então, durante o desenvolvimento, vale alternar com o modo normal para depurar.
+
 ### Banco de dados
 
 O app usa três tabelas no Supabase: `Procedimentos`, `Relatorios` e `Relatorio_Tri`. É necessário habilitar o RLS e criar políticas de acesso para o papel `anon` (veja "Limitações conhecidas") e incluir a tabela `Procedimentos` na publicação do Realtime:
@@ -89,4 +105,4 @@ Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos
 
 ## Autor
 
-Seu Nome — [LinkedIn](https://linkedin.com/in/seu-perfil) · [GitHub](https://github.com/seu-usuario)
+Arthur Henrique da Silva Gomes — [LinkedIn](https://www.linkedin.com/in/arthur-henrique-da-silva-gomes-07a499298/) · [GitHub](https://github.com/chernns)

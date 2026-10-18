@@ -3,6 +3,7 @@
 Projeto: TCC Cabeleireiro (app mobile React Native + Supabase)
 
 **Ambiente:** Expo SDK 57, Expo Go no celular, Supabase (PostgreSQL), Windows.
+**Modos de execução:** os testes manuais de desempenho e de uso corrente usam `npm run rapido`, atalho para `expo start --tunnel -c --no-dev --minify` (ver seção 8); os demais podem ser feitos no modo normal (`npx expo start --tunnel -c`), que exibe telas de erro e avisos do React.
 **Tipos de teste:** manual funcional, validação em banco via SQL, testes unitários automatizados (Jest).
 
 Legenda de status: ✅ Passou · 🐞 Falhou e foi corrigido · ⚠️ Registrado como limitação
@@ -458,3 +459,21 @@ Executar com `npm test`. Última execução: 13 suites passando.
 - Tratar também as falhas das consultas de leitura (`buscar` e os relatórios apenas registram o erro no console).
 - Autenticação com Supabase Auth e políticas RLS por usuário.
 - Pipeline de CI (GitHub Actions) rodando `npm test` a cada push.
+
+---
+
+## 8. Observação sobre desempenho
+
+- **Sintoma:** no Expo Go, ações simples demoravam, por exemplo cerca de 2 segundos para o modo claro/escuro ter efeito.
+- **Hipóteses investigadas:** (1) buscas ao banco disparadas ao trocar tema ou data, (2) telas ocultas sendo redesenhadas por causa das páginas deslizáveis, (3) três consultas em sequência na função de busca.
+- **Medição:** o mesmo código foi executado nos dois modos do Expo Go.
+
+| Modo | Comando | Resultado |
+|---|---|---|
+| Desenvolvimento (padrão) | `npx expo start --tunnel -c` | Atraso grande ao trocar o tema |
+| Sem desenvolvimento, minificado | `npx expo start --tunnel -c --no-dev --minify` | Atraso imperceptível |
+
+- **Conclusão:** o atraso vem do modo de desenvolvimento do Expo Go (verificações extras e ausência de otimizações), não do código do app. Nenhuma alteração de código foi necessária; a tentativa de reduzir redesenhos das telas ocultas (componente `Pagina`) foi descartada.
+- **Decisão de teste:** os testes de desempenho e de uso corrente passam a ser feitos com `--no-dev --minify`, por meio do script `rapido` do `package.json` (`"rapido": "expo start --tunnel -c --no-dev --minify"`), executado com `npm run rapido`.
+- **Contrapartida:** nesse modo as telas de erro e os avisos do React não aparecem (foi a tela de erro que revelou os BUG-09 e BUG-13). Por isso, antes de fechar cada etapa, os fluxos também devem ser percorridos no modo normal.
+- **Ponto ainda em aberto:** a busca completa ao banco ao trocar tema ou tocar em um dia (`useEffect` com `[dataHome, dataAgenda, dark]`) é desnecessária e pode ser removida como otimização de consumo de dados e bateria.
