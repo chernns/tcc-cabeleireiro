@@ -4,7 +4,7 @@ Aplicativo mobile para gestão de agendamentos de um salão de cabeleireiro, des
 
 ## Funcionalidades
 
-- Agendamento de clientes com data, horário, tipo de corte, serviço e valor
+- Agendamento de clientes com data, horário, tipo de corte, serviço e valor; o serviço é escolhido por botões (cortar e pintar: cabelo, barba ou cabelo + barba), sem digitação
 - Horários escolhidos por botões, gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos); horários ocupados, bloqueados ou já passados ficam indisponíveis
 - Bloqueio de conflitos (horário já ocupado ou bloqueado)
 - Agenda com visualização em linha do tempo ou lista
@@ -73,7 +73,7 @@ alter publication supabase_realtime add table "Procedimentos";
 npm test
 ```
 
-Os testes automatizados (13 suites) cobrem as funções puras em `src/utils/` (horário, datas e limites de período, trimestres, formatação, agrupamento de serviços, conversões, geração de horários, conflitos, horários indisponíveis e bloqueio em lote) e as operações de gravação em `src/services/` (agendar, editar, concluir, remover e bloquear), com o banco simulado. Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
+Os testes automatizados (14 suites) cobrem as funções puras em `src/utils/` (horário, datas e limites de período, trimestres, formatação, agrupamento de serviços, conversões, geração de horários, conflitos, horários indisponíveis, bloqueio em lote e montagem do texto do serviço) e as operações de gravação em `src/services/` (agendar, editar, concluir, remover e bloquear), com o banco simulado. Os fluxos de interface e de banco foram testados manualmente; os casos estão documentados em [`docs/casos-de-teste.md`](docs/casos-de-teste.md).
 
 ## Estrutura do projeto
 
@@ -99,6 +99,7 @@ Durante o desenvolvimento foram encontrados e corrigidos vários defeitos, todos
 - **Sem autenticação.** As políticas RLS liberam acesso total ao papel `anon`, e o linter do Supabase aponta isso como aviso. Melhoria futura: Supabase Auth com políticas por usuário.
 - **`horario_atendimento` é texto** (`varchar`) e existem dois formatos (`2026-10-07 10:00` e `2026-10-07T10:00:00`). Melhoria futura: migrar para `timestamp`.
 - **`telefone` é `bigint`**, o que descarta zeros à esquerda. Melhoria futura: usar `text`.
+- **Serviços populares por texto:** o relatório agrupa pelo texto do serviço, então combinações diferentes (por exemplo, "Corte de cabelo" e "Corte de cabelo + Pintura de barba") aparecem como linhas separadas.
 - **Gesto sobre o calendário:** um arraste horizontal sobre o calendário troca de tela em vez de mudar o mês; para mudar de mês, use as setas.
 - **Realtime depende da publicação** `supabase_realtime`; se a conexão com o canal cair, o app se atualiza ao voltar para o primeiro plano e a cada 60 segundos.
 - **Sem duração de atendimento:** cada agendamento ocupa apenas o seu horário na grade definida pelo intervalo configurado, e um atendimento longo não impede agendar nos horários seguintes. Bloqueios, por outro lado, valem para a hora inteira.

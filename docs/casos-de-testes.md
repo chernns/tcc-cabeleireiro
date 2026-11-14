@@ -353,6 +353,25 @@ Dados inseridos por SQL (o app não permite criar atendimentos no passado), todo
 | 11 | Usar modais (concluir, editar, bloquear em lote) | Funcionam; o gesto não troca a tela por baixo | ✅ |
 | 12 | Modo escuro | Sem faixas ou cores estranhas entre as telas | ✅ |
 
+### 3.14 Seleção do serviço por botões (cortar e pintar)
+
+| # | Cenário | Esperado | Resultado |
+|---|---|---|---|
+| 1 | Home: campo de serviço | Dois grupos de botões, Cortar e Pintar, com Cabelo, Barba e Cabelo + barba | ✅ |
+| 2 | Tocar em Cortar > Cabelo | Fica ativo; os outros do grupo ficam apagados | ✅ |
+| 3 | Tocar em Pintar > Barba mantendo o corte | Os dois grupos ficam marcados ao mesmo tempo | ✅ |
+| 4 | Tocar de novo na opção marcada | Desmarca | ✅ |
+| 5 | Confirmar o agendamento | Salva; o cartão mostra `Corte de cabelo + Pintura de barba` | ✅ |
+| 6 | Depois de salvar | Formulário limpa e nada fica marcado | ✅ |
+| 7 | Agendar sem escolher serviço | Salva (campo opcional); cartão mostra "Procedimento não informado" | ✅ |
+| 8 | Editar um agendamento novo | Botões já vêm marcados como estavam | ✅ |
+| 9 | Editar um agendamento antigo (texto digitado, por exemplo `Degrade`) | Aparece "Serviço anterior mantido" e o texto continua ao salvar sem mexer | ✅ |
+| 10 | Tocar em "toque para remover" e salvar | O serviço antigo some | ✅ |
+| 11 | Cancelar e Reagendar | O modal abre com o serviço marcado | ✅ |
+| 12 | Relatório > Serviços mais populares | Mostra os nomes novos (por exemplo, Corte de cabelo) | ✅ |
+| 13 | Modo escuro | Botões legíveis | ✅ |
+| 14 | Montagem e leitura do texto do serviço (todas as combinações de corte e pintura, ida e volta, texto antigo, nulos) | Texto montado e lido corretamente, sem perder partes antigas | ✅ Automatizado (`servico.test.js`) |
+
 ---
 
 ## 4. Mudanças de comportamento
@@ -370,6 +389,7 @@ A lógica está em `src/utils/conflito.js` (`encontrarConflito`) e é coberta po
 
 - **Tipo de corte:** campo de texto livre substituído por seleção entre opções fixas (Masculino e Feminino), reduzindo variações de digitação.
 - **Horário:** campo de texto `HH:MM` substituído por botões gerados a partir do horário de funcionamento e do intervalo configurado (mínimo de 15 minutos). A lógica está em `src/utils/slots.js` (`gerarSlots`, `calcularDesabilitados`).
+- **Serviço (procedimento):** campo de texto livre substituído por dois grupos de botões, Cortar e Pintar, cada um com Cabelo, Barba e Cabelo + barba; é possível marcar uma opção em cada grupo. O banco continua guardando o serviço como texto, montado pelo app (por exemplo, `Corte de cabelo + Pintura de barba`). Textos antigos digitados são preservados ao editar. A lógica está em `src/utils/procedimentos.js` (`montarProcedimento`, `lerProcedimento`) e é coberta por `servico.test.js`.
 - **Duração:** campo removido da Home e do reagendamento, por ser desnecessário (nenhuma regra dependia dele; conflitos e horários usam apenas o intervalo da Config). A coluna `carga_horaria` foi mantida no banco para preservar o histórico: novos agendamentos gravam valor nulo e os antigos conservam o valor que tinham.
 
 ### 4.3 Edição de agendamentos
@@ -402,6 +422,9 @@ where horario_atendimento !~ '^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$';
 select id, nome_pessoa from "Procedimentos"
 where status = 'concluido' and (valor is null or valor = 0);
 
+-- Serviços gravados (nomes montados pelos botões e textos antigos)
+select nome_procedimento, count(*) from "Procedimentos" group by 1 order by 2 desc;
+
 -- Valores de tipo de corte em uso
 select tipo_corte, count(*) from "Procedimentos" group by tipo_corte;
 
@@ -429,7 +452,7 @@ group by 1 order by qtd desc;
 
 ## 6. Testes automatizados (Jest)
 
-Executar com `npm test`. Última execução: 13 suites passando.
+Executar com `npm test`. Última execução: 14 suites passando.
 
 | Arquivo | Cobre | Pontos principais |
 |---|---|---|
@@ -445,6 +468,7 @@ Executar com `npm test`. Última execução: 13 suites passando.
 | `desabilitados.test.js` | `calcularDesabilitados` | ocupados, bloqueios, `ignorarId` no reagendamento, horários passados de hoje, outras datas |
 | `bloqueio.test.js` | `separarDatasBloqueio` | dia com agendamento ignorado, bloqueio existente, concluído não impede, hora sem zero, todas ocupadas |
 | `procedimentos.test.js` | `concluirProcedimento`, `removerProcedimento`, `inserirBloqueios` | registro certo, erro do banco devolvido, lotes de 50, parada no primeiro erro, lista vazia |
+| `servico.test.js` | `montarProcedimento`, `lerProcedimento` | cada opção de corte e pintura, combinações, ida e volta de todas as combinações, textos antigos preservados, mesmo grupo repetido, vazio e nulo |
 | `edicao.test.js` | `atualizarAgendamento` | atualiza só o id informado, conversões, nulos, campos enviados, erro do banco |
 
 ---
@@ -454,6 +478,7 @@ Executar com `npm test`. Última execução: 13 suites passando.
 - Testes de interface com React Native Testing Library (formulário da Home, modais, seletores).
 - Teste de integração para `salvar` (evitaria regressões como o BUG-09).
 - Teste automatizado da navegação e da abertura dos modais (teria detectado o BUG-14).
+- Somar, no relatório de serviços populares, combinações como "Corte de cabelo" e "Corte de cabelo + Pintura de barba" por tipo de serviço (hoje cada texto é uma linha separada).
 - Se o salão passar a precisar de atendimentos com durações diferentes, reintroduzir a duração e considerá-la na regra de conflito (hoje cada agendamento ocupa apenas o seu horário).
 - Migrar `horario_atendimento` para `timestamp` e `telefone` para `text`.
 - Tratar também as falhas das consultas de leitura (`buscar` e os relatórios apenas registram o erro no console).
