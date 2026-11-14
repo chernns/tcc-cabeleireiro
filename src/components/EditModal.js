@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CalendarioCustom } from './CalendarioCustom';
 import { SeletorOpcoes, OPCOES_CORTE } from './SeletorOpcoes';
 import { SeletorHorario } from './SeletorHorario';
+import { SeletorServico } from './SeletorServico';
 import { normalizarHorario } from '../utils/horario';
 import { gerarSlots, calcularDesabilitados, horaDeRegistro } from '../utils/slots';
 
@@ -98,8 +99,8 @@ export function EditModal({
           {lbl('Tipo de corte')}
           <SeletorOpcoes T={T} opcoes={OPCOES_CORTE} valor={corte} onChange={setCorte} />
 
-          {lbl('Procedimento')}
-          {inp('proc', 'Procedimento', procedimento, setProcedimento)}
+          {lbl('Serviço')}
+          <SeletorServico T={T} valor={procedimento} onChange={setProcedimento} />
 
           {lbl('Horário')}
           {!dataEdit ? (

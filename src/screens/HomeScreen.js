@@ -11,6 +11,7 @@ import { EstadoVazio } from '../components/EstadoVazio';
 import { AppointmentCard } from '../components/AppointmentCard';
 import { SeletorOpcoes, OPCOES_CORTE } from '../components/SeletorOpcoes';
 import { SeletorHorario } from '../components/SeletorHorario';
+import { SeletorServico } from '../components/SeletorServico';
 
 //-----------------utils-----------------//
 
@@ -66,8 +67,8 @@ export function HomeScreen({
         <SectionLabel T={T}>Tipo de corte</SectionLabel>
         <SeletorOpcoes T={T} opcoes={OPCOES_CORTE} valor={corte} onChange={setCorte} />
 
-        <SectionLabel T={T}>Procedimento</SectionLabel>
-        <StyledInput id="proc" placeholder="Ex: Degradê, Barba, Pintura" value={procedimento} onChangeText={setProcedimento} T={T} focused={focused} setFocused={setFocused} />
+        <SectionLabel T={T}>Serviço</SectionLabel>
+        <SeletorServico T={T} valor={procedimento} onChange={setProcedimento} />
 
         <SectionLabel T={T}>Horário</SectionLabel>
         {!dataHome ? (

@@ -1,69 +1,69 @@
-import { concluirProcedimento, removerProcedimento, inserirBloqueios } from '../src/services/procedimentos';
+import { OPCOES_SERVICO, montarProcedimento, lerProcedimento } from '../src/utils/procedimentos';
 
-function criarClient({ erro = null, falharNoInsert = null } = {}) {
-  const chamadas = [];
-  let inserts = 0;
-  const cadeia = (tipo, dados) => ({
-    eq: async (campo, valor) => { chamadas.push({ tipo, dados, campo, valor }); return { error: erro }; },
-  });
-  return {
-    chamadas,
-    from: () => ({
-      update: dados => cadeia('update', dados),
-      delete: () => cadeia('delete'),
-      insert: async linhas => {
-        inserts++;
-        chamadas.push({ tipo: 'insert', linhas });
-        return { error: falharNoInsert === inserts ? { message: 'falhou' } : erro };
-      },
-    }),
-  };
-}
-
-describe('concluirProcedimento', () => {
-  test('atualiza o status do registro certo', async () => {
-    const c = criarClient();
-    expect(await concluirProcedimento(c, 7)).toEqual({ ok: true });
-    expect(c.chamadas[0]).toMatchObject({ tipo: 'update', dados: { status: 'concluido' }, campo: 'id', valor: 7 });
+describe('montarProcedimento', () => {
+  test('só corte', () => {
+    expect(montarProcedimento({ corte: 'Cabelo' })).toBe('Corte de cabelo');
+    expect(montarProcedimento({ corte: 'Barba' })).toBe('Corte de barba');
+    expect(montarProcedimento({ corte: 'Cabelo + barba' })).toBe('Corte de cabelo e barba');
   });
 
-  test('devolve o erro do banco em vez de fingir sucesso', async () => {
-    const c = criarClient({ erro: { message: 'sem conexão' } });
-    expect(await concluirProcedimento(c, 7)).toEqual({ ok: false, erro: 'sem conexão' });
+  test('só pintura', () => {
+    expect(montarProcedimento({ pintura: 'Cabelo' })).toBe('Pintura de cabelo');
+    expect(montarProcedimento({ pintura: 'Cabelo + barba' })).toBe('Pintura de cabelo e barba');
+  });
+
+  test('corte e pintura juntos', () => {
+    expect(montarProcedimento({ corte: 'Cabelo', pintura: 'Barba' })).toBe('Corte de cabelo + Pintura de barba');
+  });
+
+  test('nada marcado vira texto vazio', () => {
+    expect(montarProcedimento({})).toBe('');
+    expect(montarProcedimento()).toBe('');
+  });
+
+  test('ignora opção desconhecida', () => {
+    expect(montarProcedimento({ corte: 'Sobrancelha' })).toBe('');
+  });
+
+  test('mantém partes antigas ao final', () => {
+    expect(montarProcedimento({ corte: 'Cabelo', outros: ['Degrade'] })).toBe('Corte de cabelo + Degrade');
+    expect(montarProcedimento({ outros: ['Degrade'] })).toBe('Degrade');
   });
 });
 
-describe('removerProcedimento', () => {
-  test('remove o registro certo', async () => {
-    const c = criarClient();
-    expect(await removerProcedimento(c, 3)).toEqual({ ok: true });
-    expect(c.chamadas[0]).toMatchObject({ tipo: 'delete', campo: 'id', valor: 3 });
+describe('lerProcedimento', () => {
+  test('ida e volta para todas as combinações', () => {
+    const vazio = [''];
+    for (const corte of [...vazio, ...OPCOES_SERVICO]) {
+      for (const pintura of [...vazio, ...OPCOES_SERVICO]) {
+        const texto = montarProcedimento({ corte, pintura });
+        expect(lerProcedimento(texto)).toEqual({ corte, pintura, outros: [] });
+      }
+    }
   });
 
-  test('devolve o erro do banco', async () => {
-    const c = criarClient({ erro: { message: 'sem conexão' } });
-    expect(await removerProcedimento(c, 3)).toEqual({ ok: false, erro: 'sem conexão' });
-  });
-});
-
-describe('inserirBloqueios', () => {
-  const gerar = n => Array.from({ length: n }, (_, i) => ({ id: i }));
-
-  test('divide em lotes de 50', async () => {
-    const c = criarClient();
-    expect(await inserirBloqueios(c, gerar(120))).toEqual({ ok: true });
-    expect(c.chamadas.map(x => x.linhas.length)).toEqual([50, 50, 20]);
+  test('texto antigo digitado fica em "outros"', () => {
+    expect(lerProcedimento('Degrade')).toEqual({ corte: '', pintura: '', outros: ['Degrade'] });
   });
 
-  test('para no primeiro lote que falhar', async () => {
-    const c = criarClient({ falharNoInsert: 2 });
-    expect(await inserirBloqueios(c, gerar(120))).toEqual({ ok: false, erro: 'falhou' });
-    expect(c.chamadas).toHaveLength(2);
+  test('texto antigo com "+" é preservado na volta', () => {
+    const lido = lerProcedimento('Corte + Barba');
+    expect(lido.outros).toEqual(['Corte', 'Barba']);
+    expect(montarProcedimento(lido)).toBe('Corte + Barba');
   });
 
-  test('lista vazia não chama o banco', async () => {
-    const c = criarClient();
-    expect(await inserirBloqueios(c, [])).toEqual({ ok: true });
-    expect(c.chamadas).toHaveLength(0);
+  test('mistura de opções e texto antigo', () => {
+    expect(lerProcedimento('Corte de cabelo + Degrade')).toEqual({ corte: 'Cabelo', pintura: '', outros: ['Degrade'] });
+  });
+
+  test('o mesmo grupo duas vezes: a segunda parte vai para "outros"', () => {
+    expect(lerProcedimento('Corte de cabelo + Corte de barba')).toEqual({ corte: 'Cabelo', pintura: '', outros: ['Corte de barba'] });
+  });
+
+  test('vazio, nulo e indefinido', () => {
+    const vazio = { corte: '', pintura: '', outros: [] };
+    expect(lerProcedimento('')).toEqual(vazio);
+    expect(lerProcedimento(null)).toEqual(vazio);
+    expect(lerProcedimento(undefined)).toEqual(vazio);
   });
 });
